@@ -1,0 +1,119 @@
+train-clean-100/103/1241/103_1241_000000_000001|matthew Cuthbert is surprised
+train-clean-100/1594/135914/1594_135914_000033_000001|He told them, that having taken refuge in a small village, he there fell sick; that some charitable peasants had taken care of him, but finding he did not recover, a camel driver had undertaken to carry him to the hospital at Bagdad.
+train-clean-100/233/155990/233_155990_000018_000002|I did, however, receive aid from the Emperor of Germany.
+train-clean-100/3240/131231/3240_131231_000041_000003|Some persons, thinking them to be sea fishes, placed them in salt water, according to mr Roberts.
+train-clean-100/40/222/40_222_000026_000000|"No, read it yourself," cried Catherine, whose second thoughts were clearer.
+train-clean-100/4406/16882/4406_16882_000014_000002|Then they set me upon a horse with my wounded child in my lap, and there being no furniture upon the horse's back, as we were going down a steep hill we both fell over the horse's head, at which they, like inhumane creatures, laughed, and rejoiced to see it, though I thought we should there have ended our days, as overcome with so many difficulties.
+train-clean-100/5393/19218/5393_19218_000115_000000|"Where is it going then?"
+train-clean-100/6147/34606/6147_34606_000013_000008|One was "a dancing master;" that is to say he made the rustics frisk about by pricking the calves of their legs with the point of his sword.
+train-clean-100/6848/76049/6848_76049_000003_000007|But suppose she was not all ordinary female person....
+train-clean-100/7505/258964/7505_258964_000026_000007|During the Boer War horses and mules rose in price in the United States on account of British purchases.
+train-clean-100/831/130739/831_130739_000015_000000|But enough of these revelations.
+train-clean-100/887/123291/887_123291_000028_000000|Here the Professor laid hold of the fossil skeleton, and handled it with the skill of a dexterous showman.
+train-clean-360/112/123216/112_123216_000035_000009|The wonderful day had come and Roy's violets had no place in it.
+train-clean-360/1323/149236/1323_149236_000007_000004|It was vain to hope that mere words would quiet a nation which had not, in any age, been very amenable to control, and which was now agitated by hopes and resentments, such as great revolutions, following great oppressions, naturally engender.
+train-clean-360/1463/134465/1463_134465_000058_000000|Both Sandy and I began to laugh.
+train-clean-360/1748/1562/1748_1562_000067_000000|"Oh, Pocket, Pocket," said I; but by this time the party which had gone towards the house, rushed out again, shouting and screaming with laughter.
+train-clean-360/1914/133440/1914_133440_000014_000001|With the last twenty or thirty feet of it a deadly nausea came upon me.
+train-clean-360/207/143321/207_143321_000070_000002|The canoes were not on the river bank.
+train-clean-360/2272/152267/2272_152267_000003_000001|After supper the knight shared his own bed with the leper.
+train-clean-360/2517/135227/2517_135227_000006_000005|As I was anxious to witness some of their purely religious ceremonies, I wished to go.
+train-clean-360/2709/158074/2709_158074_000054_000000|Meanwhile the women continued to protest.
+train-clean-360/2929/86777/2929_86777_000009_000000|A long silence followed; the peach, like the grapes, fell to the ground.
+train-clean-360/318/124224/318_124224_000022_000010|In spite of his prejudice against Edward, he could put himself into Mr Waller's place, and see the thing from his point of view.
+train-clean-360/3368/170952/3368_170952_000006_000000|And can he be fearless of death, or will he choose death in battle rather than defeat and slavery, who believes the world below to be real and terrible?
+train-clean-360/3549/9203/3549_9203_000005_000004|We must hope so. There are examples.
+train-clean-360/3835/178028/3835_178028_000007_000001|That day Prince Vasili no longer boasted of his protege Kutuzov, but remained silent when the commander in chief was mentioned.
+train-clean-360/3994/149798/3994_149798_000005_000002|Afterward we can visit the mountain and punish the cruel magician of the Flatheads."
+train-clean-360/4257/6397/4257_6397_000009_000000|At that time Nostromo had been already long enough in the country to raise to the highest pitch Captain Mitchell's opinion of the extraordinary value of his discovery.
+train-clean-360/454/134728/454_134728_000133_000000|After a week of physical anguish, Unrest and pain, and feverish heat, Toward the ending day a calm and lull comes on, Three hours of peace and soothing rest of brain.
+train-clean-360/4848/28247/4848_28247_000026_000002|Had he gained this arduous height only to behold the rocks carpeted with ice and snow, and reaching interminably to the far off horizon?
+train-clean-360/5039/1189/5039_1189_000091_000000|The Shaggy Man sat down again and seemed well pleased.
+train-clean-360/5261/19373/5261_19373_000011_000001|Some cause was evidently at work on this distant planet, causing it to disagree with its motion as calculated according to the law of gravitation.
+train-clean-360/5538/70919/5538_70919_000032_000001|Only one person in the world could have laid those discoloured pearls at his door in the dead of night. The black figure in the garden, with the chiffon fluttering about its head, was Evelina Grey-or what was left of her.
+train-clean-360/5712/48848/5712_48848_000060_000003|Lily for the time had been raised to a pinnacle,--a pinnacle which might be dangerous, but which was, at any rate, lofty.
+train-clean-360/5935/43322/5935_43322_000050_000002|I think too-yes, I think that on the whole the ritual is impressive.
+train-clean-360/6115/58433/6115_58433_000007_000002|We must run the risk."
+train-clean-360/6341/64956/6341_64956_000040_000000|"Why, papa, I thought we were going to have such a nice time, and she just spoiled it all."
+train-clean-360/6509/67147/6509_67147_000028_000003|It "was n't done" in England.
+train-clean-360/6694/70837/6694_70837_000027_000002|There an enormous smiling sailor stopped me, and when I showed my pass, just said, "If you were Saint Michael himself, comrade, you couldn't pass here!" Through the glass of the door I made out the distorted face and gesticulating arms of a French correspondent, locked in....
+train-clean-360/6956/76046/6956_76046_000055_000001|Twelve hundred, fifteen hundred millions perhaps."
+train-clean-360/7145/87280/7145_87280_000004_000003|This modern Ulysses made a masterful effort, but alas! had no ships to carry him away, and no wax with which to fill his ears.
+train-clean-360/7314/77782/7314_77782_000011_000000|"Well, then, what in thunder is the matter with you?" cried the Lawyer, irritated.
+train-clean-360/7525/92915/7525_92915_000034_000001|It was desperate, too, and lasted nearly all day-and it was one of the important battles of the world, although the numbers engaged in it were not large.
+train-clean-360/7754/108640/7754_108640_000001_000004|Was I aware-was I fully aware of the discrepancy between us?
+train-clean-360/7909/106369/7909_106369_000006_000002|And Colchian Aea lies at the edge of Pontus and of the world."
+train-clean-360/8011/280922/8011_280922_000009_000000|He stretched out his hand, and all at once stroked my cheek.
+train-clean-360/8176/115046/8176_115046_000027_000001|"Bless my soul, I never can understand it!"
+train-clean-360/8459/292347/8459_292347_000015_000000|A woman near Gort, in Galway, says: 'There is a boy, now, of the Cloran's; but I wouldn't for the world let them think I spoke of him; it's two years since he came from America, and since that time he never went to Mass, or to church, or to fairs, or to market, or to stand on the cross roads, or to hurling, or to nothing.
+train-clean-360/8699/291107/8699_291107_000003_000005|He leaned closer over it, regardless of the thin choking haze that spread about his face. In his attitude there was a rigidity of controlled excitement out of keeping with the seeming harmlessness of the experiment.
+train-clean-360/8855/283242/8855_283242_000061_000000|"That couldn't be helped, grannie.
+train-other-500/102/129232/102_129232_000050_000000|Is it otherwise in the newest romance?
+train-other-500/1124/134775/1124_134775_000087_000001|Some of them are enclosed only by hedges, which lends a cheerful aspect to the street.
+train-other-500/1239/138254/1239_138254_000010_000001|It was past twelve when all preparations were finished.
+train-other-500/1373/132103/1373_132103_000056_000000|So they moved on.
+train-other-500/1566/153036/1566_153036_000087_000003|You enter the river close by the trees, and then keep straight for the pile of stones, which is some fifty yards higher up, for the ford crosses the river at an angle."
+train-other-500/1653/142352/1653_142352_000005_000002|If he should not come!
+train-other-500/1710/133294/1710_133294_000023_000000|When the Indians were the sole inhabitants of the wilds from whence they have since been expelled, their wants were few.
+train-other-500/1773/139602/1773_139602_000032_000001|When the rabbit saw that the badger was getting well, he thought of another plan by which he could compass the creature's death.
+train-other-500/1920/1793/1920_1793_000037_000001|She has a little Blenheim lapdog, that she loves a thousand times more than she ever will me!"
+train-other-500/2067/143535/2067_143535_000009_000002|Indeed, there, to the left, was a stone shelf with a little ledge to it three inches or so high, and on the shelf lay what I took to be a corpse; at any rate, it looked like one, with something white thrown over it.
+train-other-500/2208/11020/2208_11020_000037_000001|It's at my place over there.'
+train-other-500/2312/157868/2312_157868_000019_000002|I am the manager of the theatre, and I'm thundering glad that your first play has been produced at the 'New York,' sir.
+train-other-500/2485/151992/2485_151992_000028_000005|At last he looked up at his wife and said, in a gentle tone:
+train-other-500/2587/54186/2587_54186_000015_000000|Concerning the work as a whole he wrote to Clara while in the throes of composition: "This music now in me, and always such beautiful melodies!
+train-other-500/2740/288813/2740_288813_000018_000003|But Philip had kept him apart, had banked him off, and yet drained him to the dregs.
+train-other-500/2943/171001/2943_171001_000122_000000|The sound of his voice pronouncing her name aroused her.
+train-other-500/3063/138651/3063_138651_000028_000000|But, as may be imagined, the unfortunate john was as much surprised by this rencounter as the other two.
+train-other-500/3172/166439/3172_166439_000050_000000|And now at last was clear a thing that had puzzled greatly-the mechanism of that opening process by which sphere became oval disk, pyramid a four pointed star and-as I had glimpsed in the play of the Little Things about Norhala, could see now so plainly in the Keeper-the blocks took this inverted cruciform shape.
+train-other-500/331/132019/331_132019_000038_000000|"I say, this is folly!
+train-other-500/3467/166570/3467_166570_000054_000001|Does he never mention Orlando?"
+train-other-500/3587/140711/3587_140711_000015_000001|O fie, mrs Jervis, said I, how could you serve me so? Besides, it looks too free both in me, and to him.
+train-other-500/3675/187020/3675_187020_000026_000001|"I wonder what would be suitable?
+train-other-500/3819/134146/3819_134146_000019_000001|Also the figure half hidden by the cupboard door-was a female figure, massive, and in flowing robes.
+train-other-500/3912/77626/3912_77626_000003_000004|You may almost distinguish the figures on the clock that has just told the hour.
+train-other-500/4015/63729/4015_63729_000058_000000|"It does."
+train-other-500/413/22436/413_22436_000035_000003|I conjecture, the French squadron is bound for Malta and Alexandria, and the Spanish fleet for the attack of Minorca."
+train-other-500/4218/41159/4218_41159_000028_000002|Yes? That worries Alexey.
+train-other-500/4352/10940/4352_10940_000037_000002|He doesn't exist."
+train-other-500/4463/26871/4463_26871_000023_000000|"I did not notice him following me," she said timidly.
+train-other-500/4591/14356/4591_14356_000019_000000|"Within three days," cried the enchanter, loudly, "bring Rinaldo and Ricciardetto into the pass of Ronces Valles.
+train-other-500/4738/291957/4738_291957_000000_000001|ODE ON THE SPRING.
+train-other-500/4824/36029/4824_36029_000045_000003|And indeed Janet herself had taken no part in the politics, content merely to advise the combatants upon their demeanour.
+train-other-500/4936/65528/4936_65528_000014_000007|I immediately responded, "Yes, they are most terrible struck on each other," and I said it in a tone that indicated I thought it a most beautiful and lovely thing that they should be so.
+train-other-500/5019/38670/5019_38670_000017_000000|"Let me make you a present of the gloves," she said, with her irresistible smile.
+train-other-500/5132/33409/5132_33409_000016_000001|They waited on the table in Valhalla.
+train-other-500/52/121057/52_121057_000019_000000|"I," cried the steward with a strange expression.
+train-other-500/5321/53046/5321_53046_000025_000003|I gather from what mrs joel said that she's rather touched in her mind too, and has an awful hankering to get home here-to this very house.
+train-other-500/5429/210770/5429_210770_000029_000006|But this was not all.
+train-other-500/557/129797/557_129797_000072_000001|The guns were manned, the gunners already kindling fuses, when the buccaneer fleet, whilst still heading for Palomas, was observed to bear away to the west.
+train-other-500/572/128861/572_128861_000016_000002|My home was desolate.
+train-other-500/5826/53497/5826_53497_000044_000001|If it be as you say, he will have shown himself noble, and his nobility will have consisted in this, that he has been willing to take that which he does not want, in order that he may succour one whom he loves.
+train-other-500/5906/52158/5906_52158_000055_000000|The impression that he gets this knowledge or suspicion from the outside is due, the scientists say, to the fact that his thinking has proceeded at such lightning like speed that he was unable to watch the wheels go round.
+train-other-500/6009/57639/6009_57639_000038_000000|This, friendly reader, is my only motive.
+train-other-500/6106/58196/6106_58196_000007_000001|I tell you that you must make the dress.
+train-other-500/6178/86034/6178_86034_000079_000004|Then she will grow calmer, and will know you again.
+train-other-500/6284/63091/6284_63091_000133_000001|I don't want to go anywhere where anybody'll see me."
+train-other-500/6436/104980/6436_104980_000009_000002|I guess you never heard about this house."
+train-other-500/6540/232291/6540_232291_000017_000003|The girl was not wholly a savage.
+train-other-500/6627/67844/6627_67844_000046_000002|The other girls had stopped talking, and now looked at Sylvia as if wondering what she would say.
+train-other-500/6707/77351/6707_77351_000002_000006|But our first words I may give you, because though they conveyed nothing to me at the time, afterwards they meant much.
+train-other-500/6777/76694/6777_76694_000013_000011|When they are forcibly put out of Garraway's on Saturday night-which they must be, for they never would go out of their own accord-where do they vanish until Monday morning?
+train-other-500/690/133452/690_133452_000011_000000|Campany lifted his quill pen and pointed to a case of big leather bound volumes in a far corner of the room.
+train-other-500/7008/34667/7008_34667_000032_000002|What had happened?
+train-other-500/7131/92815/7131_92815_000039_000001|The cabman tried to pass to the left, but a heavy express wagon cut him off.
+train-other-500/7220/77911/7220_77911_000005_000000|"Do?
+train-other-500/7326/245693/7326_245693_000008_000000|Whether the Appetite Is a Special Power of the Soul?
+train-other-500/7392/105672/7392_105672_000013_000005|Whoever, being required, refused to answer upon oath to any article of this act of settlement, was declared to be guilty of treason; and by this clause a species of political inquisition was established in the kingdom, as well as the accusations of treason multiplied to an unreasonable degree.
+train-other-500/7512/98636/7512_98636_000017_000002|A man thus rarely makes provision for the future, and looks with scorn on foreign customs which seem to betoken a fear lest, in old age, ungrateful children may neglect their parents and cast them aside.
+train-other-500/7654/258963/7654_258963_000007_000007|Egypt, for a time reduced to a semi desert condition, has only in the past century been restored to a certain extent by the use of new methods and a return to the old ones.
+train-other-500/7769/99396/7769_99396_000020_000002|I had to go out once a day in search of food.
+train-other-500/791/127519/791_127519_000086_000000|This was how it came about.
+train-other-500/8042/113769/8042_113769_000021_000000|House the second.
+train-other-500/8180/274725/8180_274725_000010_000000|"What fools men are in love matters," quoth Patty to herself-"at least most men!" with a thought backward to Mark's sensible choosing.
+train-other-500/8291/282929/8291_282929_000031_000006|He's in a devil of a-Well, he needs the money, and I've got to get it for him. You know my word's good, Cooper."
+train-other-500/8389/120181/8389_120181_000022_000000|"No," I answered.
+train-other-500/8476/269293/8476_269293_000078_000001|Annie, in some wonder, went downstairs alone.
+train-other-500/8675/295195/8675_295195_000004_000004|Everything had gone on prosperously with them, and they had reared many successive families of young Nutcrackers, who went forth to assume their places in the forest of life, and to reflect credit on their bringing up,--so that naturally enough they began to have a very easy way of considering themselves models of wisdom.
+train-other-500/9000/282381/9000_282381_000016_000008|Bank facings seemed to indicate that the richest pay dirt lay at bed rock.
+train-other-500/978/132494/978_132494_000017_000001|And what made you come at that very minute?
