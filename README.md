@@ -75,6 +75,7 @@ One can download the checkpoints of generator (e.g., g_05000000) and discriminat
 
 The paper results are based on 24kHz BigVGAN models trained on LibriTTS dataset.
 We also provide 22kHz BigVGAN models with band-limited setup (i.e., fmax=8000) for TTS applications.
+Note that, the latest checkpoints use ``snakebeta`` activation with log scale parameterization, which have the best overall quality.
 
 
 ## TODO
