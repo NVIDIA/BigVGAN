@@ -84,12 +84,12 @@ Current codebase only provides a plain PyTorch implementation for the filtered n
 
 
 ## References
-HiFi-GAN (for generator and multi-period discriminator): [https://github.com/jik876/hifi-gan](https://github.com/jik876/hifi-gan)
+* [HiFi-GAN](https://github.com/jik876/hifi-gan) (for generator and multi-period discriminator)
 
-Snake (for periodic activation): [https://github.com/EdwardDixon/snake](https://github.com/EdwardDixon/snake)
+* [Snake](https://github.com/EdwardDixon/snake) (for periodic activation)
 
-alias-free-torch (for anti-aliasing): [https://github.com/junjun3518/alias-free-torch](https://github.com/junjun3518/alias-free-torch)
+* [Alias-free-torch](https://github.com/junjun3518/alias-free-torch) (for anti-aliasing)
 
-Julius (for low-pass filter): [https://github.com/adefossez/julius](https://github.com/adefossez/julius)
+* [Julius](https://github.com/adefossez/julius) (for low-pass filter)
 
-UnivNet (for multi-resolution discriminator): [https://github.com/mindslab-ai/univnet](https://github.com/mindslab-ai/univnet)
+* [UnivNet](https://github.com/mindslab-ai/univnet) (for multi-resolution discriminator)
