@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION. 
+# Copyright (c) 2024 NVIDIA CORPORATION. 
 #   Licensed under the MIT license.
 
 import os, glob

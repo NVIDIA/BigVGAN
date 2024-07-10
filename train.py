@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION. 
+# Copyright (c) 2024 NVIDIA CORPORATION. 
 #   Licensed under the MIT license.
 
 # Adapted from https://github.com/jik876/hifi-gan under the MIT license.
@@ -21,8 +21,8 @@ from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel
 from env import AttrDict, build_env
 from meldataset import MelDataset, mel_spectrogram, get_dataset_filelist, MAX_WAV_VALUE
-from models import BigVGAN, MultiPeriodDiscriminator, MultiResolutionDiscriminator,\
-    feature_loss, generator_loss, discriminator_loss
+from models import BigVGAN, MultiPeriodDiscriminator, MultiResolutionDiscriminator, MultiBandDiscriminator, MultiScaleSubbandCQTDiscriminator, \
+    feature_loss, generator_loss, discriminator_loss, MultiScaleMelSpectrogramLoss
 from utils import plot_spectrogram, plot_spectrogram_clipped, scan_checkpoint, load_checkpoint, save_checkpoint, save_audio
 import torchaudio as ta
 from pesq import pesq
@@ -34,8 +34,12 @@ torch.backends.cudnn.benchmark = False
 def train(rank, a, h):
     if h.num_gpus > 1:
         # initialize distributed
-        init_process_group(backend=h.dist_config['dist_backend'], init_method=h.dist_config['dist_url'],
-                           world_size=h.dist_config['world_size'] * h.num_gpus, rank=rank)
+        init_process_group(
+            backend=h.dist_config['dist_backend'],
+            init_method=h.dist_config['dist_url'],
+            world_size=h.dist_config['world_size'] * h.num_gpus,
+            rank=rank
+        )
 
     # set seed and device
     torch.cuda.manual_seed(h.seed)
@@ -44,19 +48,36 @@ def train(rank, a, h):
 
     # define BigVGAN generator
     generator = BigVGAN(h).to(device)
-    print("Generator params: {}".format(sum(p.numel() for p in generator.parameters())))
 
     # define discriminators. MPD is used by default
     mpd = MultiPeriodDiscriminator(h).to(device)
-    print("Discriminator mpd params: {}".format(sum(p.numel() for p in mpd.parameters())))
 
-    # define additional discriminators. BigVGAN uses MRD as default
-    mrd = MultiResolutionDiscriminator(h).to(device)
-    print("Discriminator mrd params: {}".format(sum(p.numel() for p in mrd.parameters())))
+    # define additional discriminators. BigVGAN-v1 uses UnivNet's MRD as default
+    # New in BigVGAN-v2: option to switch to new discriminators: MultiBandDiscriminator / MultiScaleSubbandCQTDiscriminator
+    if h.get("use_mbd_instead_of_mrd", False): # switch to MBD
+        print("INFO: using MultiBandDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator")
+        mrd = MultiBandDiscriminator(h).to(device) # variable name is kept as "mrd" for backward compatibility & minimal code change
+    elif h.get("use_cqtd_instead_of_mrd", False): # switch CQTD
+        print("INFO: using MultiScaleSubbandCQTDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator")
+        mrd = MultiScaleSubbandCQTDiscriminator(h).to(device)
+    else:
+        mrd = MultiResolutionDiscriminator(h).to(device) # fallback to original MRD in BigVGAN-v1
+    
+    # New in BigVGAN-v2: option to switch to multi-scale L1 mel loss
+    if h.get("use_multiscale_melloss", False):
+        print("INFO: using multi-scale Mel l1 loss of BigVGAN-v2 instead of the original single-scale loss")
+        fn_mel_loss_multiscale = MultiScaleMelSpectrogramLoss(sampling_rate=h.sampling_rate) # NOTE: accepts waveform as input
+    else:
+        fn_mel_loss_singlescale = F.l1_loss
 
-    # create or scan the latest checkpoint from checkpoints directory
+    # print the model & number of parameters, and create or scan the latest checkpoint from checkpoints directory
     if rank == 0:
         print(generator)
+        print(mpd)
+        print(mrd)
+        print("Generator params: {}".format(sum(p.numel() for p in generator.parameters())))
+        print("Discriminator mpd params: {}".format(sum(p.numel() for p in mpd.parameters())))
+        print("Discriminator mrd params: {}".format(sum(p.numel() for p in mrd.parameters())))
         os.makedirs(a.checkpoint_path, exist_ok=True)
         print("checkpoints directory : ", a.checkpoint_path)
 
@@ -85,8 +106,7 @@ def train(rank, a, h):
         mrd = DistributedDataParallel(mrd, device_ids=[rank]).to(device)
 
     optim_g = torch.optim.AdamW(generator.parameters(), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
-    optim_d = torch.optim.AdamW(itertools.chain(mrd.parameters(), mpd.parameters()),
-                                h.learning_rate, betas=[h.adam_b1, h.adam_b2])
+    optim_d = torch.optim.AdamW(itertools.chain(mrd.parameters(), mpd.parameters()), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
 
     if state_dict_do is not None:
         optim_g.load_state_dict(state_dict_do['optim_g'])
@@ -191,7 +211,7 @@ def train(rank, a, h):
                     val_pesq_tot += pesq(16000, y_int_16k, y_g_hat_int_16k, 'wb')
 
                 # MRSTFT calculation
-                val_mrstft_tot += loss_mrstft(y_g_hat.squeeze(1), y).item()
+                val_mrstft_tot += loss_mrstft(y_g_hat, y).item()
 
                 # log audio and figures to Tensorboard
                 if j % a.eval_subsample == 0:  # subsample every nth from validation set
@@ -261,8 +281,7 @@ def train(rank, a, h):
             y = y.unsqueeze(1)
 
             y_g_hat = generator(x)
-            y_g_hat_mel = mel_spectrogram(y_g_hat.squeeze(1), h.n_fft, h.num_mels, h.sampling_rate, h.hop_size, h.win_size,
-                                          h.fmin, h.fmax_for_loss)
+            y_g_hat_mel = mel_spectrogram(y_g_hat.squeeze(1), h.n_fft, h.num_mels, h.sampling_rate, h.hop_size, h.win_size, h.fmin, h.fmax_for_loss)
 
             optim_d.zero_grad()
 
@@ -276,11 +295,14 @@ def train(rank, a, h):
 
             loss_disc_all = loss_disc_s + loss_disc_f
 
+            # set clip_grad_norm value
+            clip_grad_norm = h.get("clip_grad_norm", 1000.) # defaults to 1000
+            
             # whether to freeze D for initial training steps
             if steps >= a.freeze_step:
                 loss_disc_all.backward()
-                grad_norm_mpd = torch.nn.utils.clip_grad_norm_(mpd.parameters(), 1000.)
-                grad_norm_mrd = torch.nn.utils.clip_grad_norm_(mrd.parameters(), 1000.)
+                grad_norm_mpd = torch.nn.utils.clip_grad_norm_(mpd.parameters(), clip_grad_norm)
+                grad_norm_mrd = torch.nn.utils.clip_grad_norm_(mrd.parameters(), clip_grad_norm)
                 optim_d.step()
             else:
                 print("WARNING: skipping D training for the first {} steps".format(a.freeze_step))
@@ -291,7 +313,11 @@ def train(rank, a, h):
             optim_g.zero_grad()
 
             # L1 Mel-Spectrogram Loss
-            loss_mel = F.l1_loss(y_mel, y_g_hat_mel) * 45
+            lambda_melloss = h.get("lambda_melloss", 45.) # defaults to 45 in BigVGAN-v1 if not set
+            if h.get("use_multiscale_melloss", False): # uses wav <y, y_g_hat> for loss
+                loss_mel = fn_mel_loss_multiscale(y, y_g_hat) * lambda_melloss
+            else: # uses mel <y_mel, y_g_hat_mel> for loss
+                loss_mel = fn_mel_loss_singlescale(y_mel, y_g_hat_mel) * lambda_melloss   
 
             # MPD loss
             y_df_hat_r, y_df_hat_g, fmap_f_r, fmap_f_g = mpd(y, y_g_hat)
@@ -310,17 +336,21 @@ def train(rank, a, h):
                 loss_gen_all = loss_mel
 
             loss_gen_all.backward()
-            grad_norm_g = torch.nn.utils.clip_grad_norm_(generator.parameters(), 1000.)
+            grad_norm_g = torch.nn.utils.clip_grad_norm_(generator.parameters(), clip_grad_norm)
             optim_g.step()
 
             if rank == 0:
                 # STDOUT logging
                 if steps % a.stdout_interval == 0:
-                    with torch.no_grad():
-                        mel_error = F.l1_loss(y_mel, y_g_hat_mel).item()
-
-                    print('Steps : {:d}, Gen Loss Total : {:4.3f}, Mel-Spec. Error : {:4.3f}, s/b : {:4.3f}'.
-                          format(steps, loss_gen_all, mel_error, time.time() - start_b))
+                    mel_error = loss_mel.item() / lambda_melloss # log training mel regression loss to stdout
+                    print(
+                            f"Steps: {steps:d}, "
+                            f"Gen Loss Total: {loss_gen_all:4.3f}, "
+                            f"Mel Error: {mel_error:4.3f}, "
+                            f"s/b: {time.time() - start_b:4.3f} "
+                            f"lr: {optim_g.param_groups[0]['lr']:4.7f} "
+                            f"grad_norm_g: {grad_norm_g:4.3f}"
+                        )
 
                 # checkpointing
                 if steps % a.checkpoint_interval == 0 and steps != 0:
@@ -338,7 +368,8 @@ def train(rank, a, h):
 
                 # Tensorboard summary logging
                 if steps % a.summary_interval == 0:
-                    sw.add_scalar("training/gen_loss_total", loss_gen_all, steps)
+                    mel_error = loss_mel.item() / lambda_melloss # log training mel regression loss to tensorboard
+                    sw.add_scalar("training/gen_loss_total", loss_gen_all.item(), steps)
                     sw.add_scalar("training/mel_spec_error", mel_error, steps)
                     sw.add_scalar("training/fm_loss_mpd", loss_fm_f.item(), steps)
                     sw.add_scalar("training/gen_loss_mpd", loss_gen_f.item(), steps)
@@ -368,9 +399,10 @@ def train(rank, a, h):
                             validate(rank, a, h, list_unseen_validation_loader[i],
                                      mode="unseen_{}".format(list_unseen_validation_loader[i].dataset.name))
             steps += 1
-
-        scheduler_g.step()
-        scheduler_d.step()
+            
+            # BigVGAN-v2 learning rate scheduler is changed from epoch-level to step-level
+            scheduler_g.step()
+            scheduler_d.step()
         
         if rank == 0:
             print('Time taken for epoch {} is {} sec\n'.format(epoch + 1, int(time.time() - start)))

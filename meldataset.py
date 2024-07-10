@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION. 
+# Copyright (c) 2024 NVIDIA CORPORATION. 
 #   Licensed under the MIT license.
 
 # Adapted from https://github.com/jik876/hifi-gan under the MIT license.
@@ -16,7 +16,7 @@ from librosa.filters import mel as librosa_mel_fn
 import pathlib
 from tqdm import tqdm
 
-MAX_WAV_VALUE = 32768.0
+MAX_WAV_VALUE = 32767.0 # NOTE: 32768.0 -1 to prevent int16 overflow (results in popping sound in corner cases)
 
 
 def load_wav(full_path, sr_target):
@@ -65,8 +65,9 @@ def mel_spectrogram(y, n_fft, num_mels, sampling_rate, hop_size, win_size, fmin,
 
     global mel_basis, hann_window
     if fmax not in mel_basis:
-        mel = librosa_mel_fn(sampling_rate, n_fft, num_mels, fmin, fmax)
-        mel_basis[str(fmax)+'_'+str(y.device)] = torch.from_numpy(mel).float().to(y.device)
+        mel = librosa_mel_fn(sr=sampling_rate, n_fft=n_fft, n_mels=num_mels, fmin=fmin, fmax=fmax)
+        str_key_mel_basis = str(fmax)+'_'+str(y.device)
+        mel_basis[str_key_mel_basis] = torch.from_numpy(mel).float().to(y.device)
         hann_window[str(y.device)] = torch.hann_window(win_size).to(y.device)
 
     y = torch.nn.functional.pad(y.unsqueeze(1), (int((n_fft-hop_size)/2), int((n_fft-hop_size)/2)), mode='reflect')
@@ -78,7 +79,7 @@ def mel_spectrogram(y, n_fft, num_mels, sampling_rate, hop_size, win_size, fmin,
     spec = torch.view_as_real(spec)
     spec = torch.sqrt(spec.pow(2).sum(-1)+(1e-9))
 
-    spec = torch.matmul(mel_basis[str(fmax)+'_'+str(y.device)], spec)
+    spec = torch.matmul(mel_basis[str_key_mel_basis], spec)
     spec = spectral_normalize_torch(spec)
 
     return spec

@@ -1,6 +1,6 @@
 torch
 numpy
-librosa==0.8.1
+librosa>=0.8.1
 scipy
 tensorboard
 soundfile
@@ -8,3 +8,5 @@ matplotlib
 pesq
 auraloss
 tqdm
+nnAudio
+ninja

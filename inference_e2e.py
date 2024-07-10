@@ -36,7 +36,7 @@ def scan_checkpoint(cp_dir, prefix):
 
 
 def inference(a, h):
-    generator = Generator(h).to(device)
+    generator = Generator(h, use_cuda_kernel=a.use_cuda_kernel).to(device)
 
     state_dict_g = load_checkpoint(a.checkpoint_file, device)
     generator.load_state_dict(state_dict_g['generator'])
@@ -73,6 +73,7 @@ def main():
     parser.add_argument('--input_mels_dir', default='test_mel_files')
     parser.add_argument('--output_dir', default='generated_files_from_mel')
     parser.add_argument('--checkpoint_file', required=True)
+    parser.add_argument('--use_cuda_kernel', action='store_true', default=False)
 
     a = parser.parse_args()
 
