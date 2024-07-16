@@ -21,8 +21,11 @@ from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel
 from env import AttrDict, build_env
 from meldataset import MelDataset, mel_spectrogram, get_dataset_filelist, MAX_WAV_VALUE
-from models import BigVGAN, MultiPeriodDiscriminator, MultiResolutionDiscriminator, MultiBandDiscriminator, MultiScaleSubbandCQTDiscriminator, \
-    feature_loss, generator_loss, discriminator_loss, MultiScaleMelSpectrogramLoss
+
+from bigvgan import BigVGAN
+from discriminators import MultiPeriodDiscriminator, MultiResolutionDiscriminator, MultiBandDiscriminator, MultiScaleSubbandCQTDiscriminator
+from loss import feature_loss, generator_loss, discriminator_loss, MultiScaleMelSpectrogramLoss
+
 from utils import plot_spectrogram, plot_spectrogram_clipped, scan_checkpoint, load_checkpoint, save_checkpoint, save_audio
 import torchaudio as ta
 from pesq import pesq
@@ -82,8 +85,9 @@ def train(rank, a, h):
         print("checkpoints directory : ", a.checkpoint_path)
 
     if os.path.isdir(a.checkpoint_path):
-        cp_g = scan_checkpoint(a.checkpoint_path, 'g_')
-        cp_do = scan_checkpoint(a.checkpoint_path, 'do_')
+        # New in v2.1: if the step prefix pattern-based checkpoints are not found, also check for renamed files in Hugging Face Hub to resume training
+        cp_g = scan_checkpoint(a.checkpoint_path, prefix='g_', renamed_file='bigvgan_generator.pt')
+        cp_do = scan_checkpoint(a.checkpoint_path, prefix='do_', renamed_file='bigvgan_discriminator_optimizer.pt')
 
     # load the latest checkpoint if exists
     steps = 0

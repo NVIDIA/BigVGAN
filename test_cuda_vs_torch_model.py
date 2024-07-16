@@ -5,7 +5,7 @@ import math
 import torch
 import json
 from env import AttrDict
-from models import BigVGAN
+from bigvgan import BigVGAN
 from time import time
 from tqdm import tqdm
 import os

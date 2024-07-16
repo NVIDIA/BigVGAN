@@ -66,12 +66,24 @@ def save_checkpoint(filepath, obj):
     print("Complete.")
 
 
-def scan_checkpoint(cp_dir, prefix):
+def scan_checkpoint(cp_dir, prefix, renamed_file=None):
+    # fallback to original scanning logic first
     pattern = os.path.join(cp_dir, prefix + '????????')
     cp_list = glob.glob(pattern)
-    if len(cp_list) == 0:
-        return None
-    return sorted(cp_list)[-1]
+
+    if len(cp_list) > 0:
+        last_checkpoint_path = sorted(cp_list)[-1]
+        print(f"[INFO] Resuming from checkpoint: '{last_checkpoint_path}'")
+        return last_checkpoint_path
+    
+    # if no pattern-based checkpoints are found, check for renamed file
+    if renamed_file:
+        renamed_path = os.path.join(cp_dir, renamed_file)
+        if os.path.isfile(renamed_path):
+            print(f"[INFO] Resuming from renamed checkpoint: '{renamed_file}'")
+            return renamed_path
+
+    return None
 
 def save_audio(audio, path, sr):
     # wav: torch with 1d shape
