@@ -10,33 +10,14 @@ import json
 import torch
 from scipy.io.wavfile import write
 from env import AttrDict
-from meldataset import mel_spectrogram, MAX_WAV_VALUE
-from models import BigVGAN as Generator
+from meldataset import get_mel_spectrogram, MAX_WAV_VALUE
+from bigvgan import BigVGAN as Generator
+from utils import load_checkpoint
 import librosa
 
 h = None
 device = None
 torch.backends.cudnn.benchmark = False
-
-
-def load_checkpoint(filepath, device):
-    assert os.path.isfile(filepath)
-    print("Loading '{}'".format(filepath))
-    checkpoint_dict = torch.load(filepath, map_location=device)
-    print("Complete.")
-    return checkpoint_dict
-
-
-def get_mel(x):
-    return mel_spectrogram(x, h.n_fft, h.num_mels, h.sampling_rate, h.hop_size, h.win_size, h.fmin, h.fmax)
-
-
-def scan_checkpoint(cp_dir, prefix):
-    pattern = os.path.join(cp_dir, prefix + '*')
-    cp_list = glob.glob(pattern)
-    if len(cp_list) == 0:
-        return ''
-    return sorted(cp_list)[-1]
 
 
 def inference(a, h):
@@ -57,7 +38,7 @@ def inference(a, h):
             wav, sr = librosa.load(os.path.join(a.input_wavs_dir, filname), sr=h.sampling_rate, mono=True)
             wav = torch.FloatTensor(wav).to(device)
             # compute mel spectrogram from the ground truth audio
-            x = get_mel(wav.unsqueeze(0))
+            x = get_mel_spectrogram(wav.unsqueeze(0), generator.h)
 
             y_g_hat = generator(x)
 
