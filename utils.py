@@ -6,6 +6,7 @@ import os
 import matplotlib
 import torch
 from torch.nn.utils import weight_norm
+
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
 from meldataset import MAX_WAV_VALUE
@@ -14,8 +15,7 @@ from scipy.io.wavfile import write
 
 def plot_spectrogram(spectrogram):
     fig, ax = plt.subplots(figsize=(10, 2))
-    im = ax.imshow(spectrogram, aspect="auto", origin="lower",
-                   interpolation='none')
+    im = ax.imshow(spectrogram, aspect="auto", origin="lower", interpolation="none")
     plt.colorbar(im, ax=ax)
 
     fig.canvas.draw()
@@ -24,10 +24,16 @@ def plot_spectrogram(spectrogram):
     return fig
 
 
-def plot_spectrogram_clipped(spectrogram, clip_max=2.):
+def plot_spectrogram_clipped(spectrogram, clip_max=2.0):
     fig, ax = plt.subplots(figsize=(10, 2))
-    im = ax.imshow(spectrogram, aspect="auto", origin="lower",
-                   interpolation='none', vmin=1e-6, vmax=clip_max)
+    im = ax.imshow(
+        spectrogram,
+        aspect="auto",
+        origin="lower",
+        interpolation="none",
+        vmin=1e-6,
+        vmax=clip_max,
+    )
     plt.colorbar(im, ax=ax)
 
     fig.canvas.draw()
@@ -49,7 +55,7 @@ def apply_weight_norm(m):
 
 
 def get_padding(kernel_size, dilation=1):
-    return int((kernel_size*dilation - dilation)/2)
+    return int((kernel_size * dilation - dilation) / 2)
 
 
 def load_checkpoint(filepath, device):
@@ -67,16 +73,16 @@ def save_checkpoint(filepath, obj):
 
 
 def scan_checkpoint(cp_dir, prefix, renamed_file=None):
-    # fallback to original scanning logic first
-    pattern = os.path.join(cp_dir, prefix + '????????')
+    # Fallback to original scanning logic first
+    pattern = os.path.join(cp_dir, prefix + "????????")
     cp_list = glob.glob(pattern)
 
     if len(cp_list) > 0:
         last_checkpoint_path = sorted(cp_list)[-1]
         print(f"[INFO] Resuming from checkpoint: '{last_checkpoint_path}'")
         return last_checkpoint_path
-    
-    # if no pattern-based checkpoints are found, check for renamed file
+
+    # If no pattern-based checkpoints are found, check for renamed file
     if renamed_file:
         renamed_path = os.path.join(cp_dir, renamed_file)
         if os.path.isfile(renamed_path):
@@ -85,8 +91,9 @@ def scan_checkpoint(cp_dir, prefix, renamed_file=None):
 
     return None
 
+
 def save_audio(audio, path, sr):
     # wav: torch with 1d shape
     audio = audio * MAX_WAV_VALUE
-    audio = audio.cpu().numpy().astype('int16')
+    audio = audio.cpu().numpy().astype("int16")
     write(path, sr, audio)

@@ -28,26 +28,26 @@ else:
     print(f"using CPU")
 
 
-def inference_gradio(input, model_choice):  # input is audio waveform in [T, channel]
-    sr, audio = input  # unpack input to sampling rate and audio itself
-    audio = np.transpose(audio)  # transpose to [channel, T] for librosa
-    audio = audio / MAX_WAV_VALUE  # convert int16 to float range used by BigVGAN
+def inference_gradio(input, model_choice):  # Input is audio waveform in [T, channel]
+    sr, audio = input  # Unpack input to sampling rate and audio itself
+    audio = np.transpose(audio)  # Transpose to [channel, T] for librosa
+    audio = audio / MAX_WAV_VALUE  # Convert int16 to float range used by BigVGAN
 
     model = dict_model[model_choice]
 
-    if sr != model.h.sampling_rate:  # convert audio to model's sampling rate
+    if sr != model.h.sampling_rate:  # Convert audio to model's sampling rate
         audio = librosa.resample(audio, orig_sr=sr, target_sr=model.h.sampling_rate)
-    if len(audio.shape) == 2:  # stereo
-        audio = librosa.to_mono(audio)  # convert to mono if stereo
+    if len(audio.shape) == 2:  # Stereo
+        audio = librosa.to_mono(audio)  # Convert to mono if stereo
     audio = librosa.util.normalize(audio) * 0.95
 
     output, spec_gen = inference_model(
         audio, model
-    )  # output is generated audio in ndarray, int16
+    )  # Output is generated audio in ndarray, int16
 
     spec_plot_gen = plot_spectrogram(spec_gen)
 
-    output_audio = (model.h.sampling_rate, output)  # tuple for gr.Audio output
+    output_audio = (model.h.sampling_rate, output)  # Tuple for gr.Audio output
 
     buffer = spec_plot_gen.canvas.buffer_rgba()
     output_image = PIL.Image.frombuffer(
@@ -59,12 +59,12 @@ def inference_gradio(input, model_choice):  # input is audio waveform in [T, cha
 
 @spaces.GPU(duration=120)
 def inference_model(audio_input, model):
-    # load model to device
+    # Load model to device
     model.to(device)
 
     with torch.inference_mode():
         wav = torch.FloatTensor(audio_input)
-        # compute mel spectrogram from the ground truth audio
+        # Compute mel spectrogram from the ground truth audio
         spec_gt = get_mel_spectrogram(wav.unsqueeze(0), model.h).to(device)
 
         y_g_hat = model(spec_gt)
@@ -75,9 +75,9 @@ def inference_model(audio_input, model):
         audio_gen = (audio_gen * MAX_WAV_VALUE).astype("int16")  # [T], int16
         spec_gen = spec_gen.squeeze().numpy()  # [C, T_frame]
 
-    # unload to cpu
+    # Unload to CPU
     model.to("cpu")
-    # delete gpu tensor
+    # Delete GPU tensor
     del spec_gt, y_g_hat
 
     return audio_gen, spec_gen

@@ -1,6 +1,6 @@
 *.pyc
 __pycache__/
 */__pycache__/
-alias_free_cuda/build/
+alias/cuda/build/
 exp/
 tmp/
