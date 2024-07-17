@@ -33,7 +33,7 @@ def write_filelist(output_path, wav_list, txt_list):
 
 if __name__ == "__main__":
 
-    data_root = "LibriTTS"
+    data_root = "tests/LibriTTS"
 
     # Dev and test sets. subsample each sets to get ~100 utterances
     data_type_list = ["dev-clean", "dev-other", "test-clean", "test-other"]
