@@ -1,4 +1,5 @@
 ## BigVGAN: A Universal Neural Vocoder with Large-Scale Training
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/bigvgan-a-universal-neural-vocoder-with-large/speech-synthesis-on-libritts)](https://paperswithcode.com/sota/speech-synthesis-on-libritts?p=bigvgan-a-universal-neural-vocoder-with-large)
 #### Sang-gil Lee, Wei Ping, Boris Ginsburg, Bryan Catanzaro, Sungroh Yoon
 
 <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800"></center>
@@ -17,6 +18,8 @@
 
 
 ## News
+[Jul 2024 (v2.2)] The repository now includes an interactive local demo using gradio.
+
 [Jul 2024 (v2.1)] BigVGAN is now integrated with 🤗 Hugging Face Hub with easy access to inference using pretrained checkpoints. We also provide an interactive demo on Hugging Face Spaces.
 
 [Jul 2024 (v2)] We release BigVGAN-v2 along with pretrained checkpoints. Below are the highlights:
@@ -72,6 +75,14 @@ wav_gen_float = wav_gen.squeeze(0).cpu() # wav_gen is FloatTensor with shape [1,
 
 # you can convert the generated waveform to 16 bit linear PCM
 wav_gen_int16 = (wav_gen_float * 32767.0).numpy().astype('int16') # wav_gen is now np.ndarray with shape [1, T_time] and int16 dtype
+```
+
+
+## Local gradio demo <a href='https://github.com/gradio-app/gradio'><img src='https://img.shields.io/github/stars/gradio-app/gradio'></a>
+You can run a local gradio demo using below command:
+```python
+pip install -r gradio_demo/requirements.txt
+python gradio_demo/app.py
 ```
 
 ## Training
