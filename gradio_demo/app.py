@@ -1,33 +1,30 @@
-# Copyright (c) 2024 NVIDIA CORPORATION. 
+# Copyright (c) 2024 NVIDIA CORPORATION.
 #   Licensed under the MIT license.
 
 import spaces
 import gradio as gr
-from huggingface_hub import hf_hub_download
-
-import json
+import pandas as pd
 import torch
 import os
 import sys
 
 # to import modules from parent_dir
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
-from env import AttrDict
 from meldataset import get_mel_spectrogram, MAX_WAV_VALUE
 from bigvgan import BigVGAN
 import librosa
 import numpy as np
-from utils import plot_spectrogram, load_checkpoint
+from utils import plot_spectrogram
 import PIL
 
 if torch.cuda.is_available():
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     torch.backends.cudnn.benchmark = False
     print(f"using GPU")
 else:
-    device = torch.device('cpu')
+    device = torch.device("cpu")
     print(f"using CPU")
 
 
@@ -50,17 +47,11 @@ def inference_gradio(input, model_choice):  # input is audio waveform in [T, cha
 
     spec_plot_gen = plot_spectrogram(spec_gen)
 
-    output_audio = (model.h.sampling_rate, output) # tuple for gr.Audio output
+    output_audio = (model.h.sampling_rate, output)  # tuple for gr.Audio output
 
     buffer = spec_plot_gen.canvas.buffer_rgba()
     output_image = PIL.Image.frombuffer(
-        "RGBA",
-        spec_plot_gen.canvas.get_width_height(),
-        buffer,
-        "raw",
-        "RGBA",
-        0,
-        1
+        "RGBA", spec_plot_gen.canvas.get_width_height(), buffer, "raw", "RGBA", 0, 1
     )
 
     return output_audio, output_image
@@ -229,7 +220,7 @@ css = """
         }
 """
 
-######################## script for loading the models ########################
+# Script for loading the models
 
 LIST_MODEL_ID = [
     "bigvgan_24khz_100band",
@@ -240,7 +231,7 @@ LIST_MODEL_ID = [
     "bigvgan_v2_22khz_80band_fmax8k_256x",
     "bigvgan_v2_24khz_100band_256x",
     "bigvgan_v2_44khz_128band_256x",
-    "bigvgan_v2_44khz_128band_512x"
+    "bigvgan_v2_44khz_128band_512x",
 ]
 
 dict_model = {}
@@ -248,16 +239,16 @@ dict_config = {}
 
 for model_name in LIST_MODEL_ID:
 
-    generator = BigVGAN.from_pretrained('nvidia/'+model_name)
+    generator = BigVGAN.from_pretrained("nvidia/" + model_name)
     generator.remove_weight_norm()
     generator.eval()
 
     dict_model[model_name] = generator
     dict_config[model_name] = generator.h
 
-######################## script for gradio UI ########################
+# Script for Gradio UI
 
-iface = gr.Blocks(css=css)
+iface = gr.Blocks(css=css, title="BigVGAN - Demo")
 
 with iface:
     gr.HTML(
@@ -268,10 +259,10 @@ with iface:
                 display: inline-flex;
                 align-items: center;
                 gap: 0.8rem;
-                font-size: 1.75rem;
+                font-size: 1.5rem;
             "
             >
-            <h1 style="font-weight: 900; margin-bottom: 7px; line-height: normal;">
+            <h1 style="font-weight: 700; margin-bottom: 7px; line-height: normal;">
                 BigVGAN: A Universal Neural Vocoder with Large-Scale Training
             </h1>
             </div>
@@ -300,14 +291,15 @@ with iface:
         <div>
         <h3>Model Overview</h3>
         BigVGAN is a universal neural vocoder model that generates audio waveforms using mel spectrogram as inputs.
-        <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800" style="margin-top: 20px;"></center>
+        <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800" style="margin-top: 20px; border-radius: 15px;"></center>
         </div>
         """
     )
+    with gr.Accordion("Input"):
 
-    with gr.Group():
         model_choice = gr.Dropdown(
-            label="Select the model. Default: bigvgan_v2_24khz_100band_256x",
+            label="Select the model to use",
+            info="The default model is bigvgan_v2_24khz_100band_256x",
             value="bigvgan_v2_24khz_100band_256x",
             choices=[m for m in LIST_MODEL_ID],
             interactive=True,
@@ -317,143 +309,129 @@ with iface:
             label="Input Audio", elem_id="input-audio", interactive=True
         )
 
-        button = gr.Button("Submit")
+    button = gr.Button("Submit")
 
-        output_audio = gr.Audio(label="Output Audio", elem_id="output-audio")
-        output_image = gr.Image(label="Output Mel Spectrogram", elem_id="output-image-gen")
+    with gr.Accordion("Output"):
+        with gr.Column():
+            output_audio = gr.Audio(label="Output Audio", elem_id="output-audio")
+            output_image = gr.Image(
+                label="Output Mel Spectrogram", elem_id="output-image-gen"
+            )
 
-        button.click(
-            inference_gradio,
-            inputs=[audio_input, model_choice],
-            outputs=[output_audio, output_image],
-            concurrency_limit=10,
-        )
+    button.click(
+        inference_gradio,
+        inputs=[audio_input, model_choice],
+        outputs=[output_audio, output_image],
+        concurrency_limit=10,
+    )
 
-        gr.Examples(
+    gr.Examples(
+        [
             [
-                [os.path.join(os.path.dirname(__file__), "examples/jensen_24k.wav"), "bigvgan_v2_24khz_100band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/libritts_24k.wav"), "bigvgan_v2_24khz_100band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/queen_24k.wav"), "bigvgan_v2_24khz_100band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/dance_24k.wav"), "bigvgan_v2_24khz_100band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/megalovania_24k.wav"), "bigvgan_v2_24khz_100band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/hifitts_44k.wav"), "bigvgan_v2_44khz_128band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/musdbhq_44k.wav"), "bigvgan_v2_44khz_128band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/musiccaps1_44k.wav"), "bigvgan_v2_44khz_128band_256x"],
-                [os.path.join(os.path.dirname(__file__), "examples/musiccaps2_44k.wav"), "bigvgan_v2_44khz_128band_256x"],
+                os.path.join(os.path.dirname(__file__), "examples/jensen_24k.wav"),
+                "bigvgan_v2_24khz_100band_256x",
             ],
-            fn=inference_gradio,
-            inputs=[audio_input, model_choice],
-            outputs=[output_audio, output_image]
-        )
+            [
+                os.path.join(os.path.dirname(__file__), "examples/libritts_24k.wav"),
+                "bigvgan_v2_24khz_100band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/queen_24k.wav"),
+                "bigvgan_v2_24khz_100band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/dance_24k.wav"),
+                "bigvgan_v2_24khz_100band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/megalovania_24k.wav"),
+                "bigvgan_v2_24khz_100band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/hifitts_44k.wav"),
+                "bigvgan_v2_44khz_128band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/musdbhq_44k.wav"),
+                "bigvgan_v2_44khz_128band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/musiccaps1_44k.wav"),
+                "bigvgan_v2_44khz_128band_256x",
+            ],
+            [
+                os.path.join(os.path.dirname(__file__), "examples/musiccaps2_44k.wav"),
+                "bigvgan_v2_44khz_128band_256x",
+            ],
+        ],
+        fn=inference_gradio,
+        inputs=[audio_input, model_choice],
+        outputs=[output_audio, output_image],
+    )
 
-    gr.HTML(
-        """
-            <table border="1" cellspacing="0" cellpadding="5">
-                <thead>
-                    <tr>
-                        <th>Model Name</th>
-                        <th>Sampling Rate</th>
-                        <th>Mel band</th>
-                        <th>fmax</th>
-                        <th>Upsampling Ratio</th>
-                        <th>Parameters</th>
-                        <th>Dataset</th>
-                        <th>Fine-Tuned</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_512x">bigvgan_v2_44khz_128band_512x</a></td>
-                        <td>44 kHz</td>
-                        <td>128</td>
-                        <td>22050</td>
-                        <td>512</td>
-                        <td>122M</td>
-                        <td>Large-scale Compilation</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_256x">bigvgan_v2_44khz_128band_256x</a></td>
-                        <td>44 kHz</td>
-                        <td>128</td>
-                        <td>22050</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>Large-scale Compilation</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_v2_24khz_100band_256x">bigvgan_v2_24khz_100band_256x</a></td>
-                        <td>24 kHz</td>
-                        <td>100</td>
-                        <td>12000</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>Large-scale Compilation</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_256x">bigvgan_v2_22khz_80band_256x</a></td>
-                        <td>22 kHz</td>
-                        <td>80</td>
-                        <td>11025</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>Large-scale Compilation</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_fmax8k_256x">bigvgan_v2_22khz_80band_fmax8k_256x</a></td>
-                        <td>22 kHz</td>
-                        <td>80</td>
-                        <td>8000</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>Large-scale Compilation</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_24khz_100band">bigvgan_24khz_100band</a></td>
-                        <td>24 kHz</td>
-                        <td>100</td>
-                        <td>12000</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>LibriTTS</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_base_24khz_100band">bigvgan_base_24khz_100band</a></td>
-                        <td>24 kHz</td>
-                        <td>100</td>
-                        <td>12000</td>
-                        <td>256</td>
-                        <td>14M</td>
-                        <td>LibriTTS</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_22khz_80band">bigvgan_22khz_80band</a></td>
-                        <td>22 kHz</td>
-                        <td>80</td>
-                        <td>8000</td>
-                        <td>256</td>
-                        <td>112M</td>
-                        <td>LibriTTS + VCTK + LJSpeech</td>
-                        <td>No</td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://huggingface.co/nvidia/bigvgan_base_22khz_80band">bigvgan_base_22khz_80band</a></td>
-                        <td>22 kHz</td>
-                        <td>80</td>
-                        <td>8000</td>
-                        <td>256</td>
-                        <td>14M</td>
-                        <td>LibriTTS + VCTK + LJSpeech</td>
-                        <td>No</td>
-                    </tr>
-                </tbody>
-            </table>
+    # Define the data for the table
+    data = {
+        "Model Name": [
+            "bigvgan_v2_44khz_128band_512x",
+            "bigvgan_v2_44khz_128band_256x",
+            "bigvgan_v2_24khz_100band_256x",
+            "bigvgan_v2_22khz_80band_256x",
+            "bigvgan_v2_22khz_80band_fmax8k_256x",
+            "bigvgan_24khz_100band",
+            "bigvgan_base_24khz_100band",
+            "bigvgan_22khz_80band",
+            "bigvgan_base_22khz_80band",
+        ],
+        "Sampling Rate": [
+            "44 kHz",
+            "44 kHz",
+            "24 kHz",
+            "22 kHz",
+            "22 kHz",
+            "24 kHz",
+            "24 kHz",
+            "22 kHz",
+            "22 kHz",
+        ],
+        "Mel band": [128, 128, 100, 80, 80, 100, 100, 80, 80],
+        "fmax": [22050, 22050, 12000, 11025, 8000, 12000, 12000, 8000, 8000],
+        "Upsampling Ratio": [512, 256, 256, 256, 256, 256, 256, 256, 256],
+        "Parameters": [
+            "122M",
+            "112M",
+            "112M",
+            "112M",
+            "112M",
+            "112M",
+            "14M",
+            "112M",
+            "14M",
+        ],
+        "Dataset": [
+            "Large-scale Compilation",
+            "Large-scale Compilation",
+            "Large-scale Compilation",
+            "Large-scale Compilation",
+            "Large-scale Compilation",
+            "LibriTTS",
+            "LibriTTS",
+            "LibriTTS + VCTK + LJSpeech",
+            "LibriTTS + VCTK + LJSpeech",
+        ],
+        "Fine-Tuned": ["No", "No", "No", "No", "No", "No", "No", "No", "No"],
+    }
+
+    base_url = "https://huggingface.co/nvidia/"
+
+    df = pd.DataFrame(data)
+    df["Model Name"] = df["Model Name"].apply(
+        lambda x: f'<a href="{base_url}{x}">{x}</a>'
+    )
+
+    html_table = gr.HTML(
+        f"""
+        <div style="text-align: center;">
+            {df.to_html(index=False, escape=False, classes='border="1" cellspacing="0" cellpadding="5" style="margin-left: auto; margin-right: auto;')}
             <p><b>NOTE: The v1 models are trained using speech audio datasets ONLY! (24kHz models: LibriTTS, 22kHz models: LibriTTS + VCTK + LJSpeech).</b></p>
         </div>
         """
