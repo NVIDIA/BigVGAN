@@ -5,18 +5,7 @@
 #### Sang-gil Lee, Wei Ping, Boris Ginsburg, Bryan Catanzaro, Sungroh Yoon
 
 <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800"></center>
-
-**Paper**: https://arxiv.org/abs/2206.04658
-
-**Code**: https://github.com/NVIDIA/BigVGAN
-
-**Project page**: https://research.nvidia.com/labs/adlr/projects/bigvgan/
-
-**Audio Demo**: https://bigvgan-demo.github.io/
-
-**🤗 Hugging Face Spaces Demo**: https://huggingface.co/spaces/nvidia/BigVGAN
-
-**🤗 Hugging Face Model Collection**: https://huggingface.co/collections/nvidia/bigvgan-66959df3d97fd7d98d97dc9a
+[Paper](https://arxiv.org/abs/2206.04658) [Code](https://github.com/NVIDIA/BigVGAN) [Showcase](https://bigvgan-demo.github.io/) [Project Page](https://research.nvidia.com/labs/adlr/projects/bigvgan/) [Weights](https://huggingface.co/collections/nvidia/bigvgan-66959df3d97fd7d98d97dc9a) [Demo](https://huggingface.co/spaces/nvidia/BigVGAN)
 
 ## News
 
@@ -162,7 +151,7 @@ Please make sure that both are installed in your system and `nvcc` installed in 
 We recommend running `test_cuda_vs_torch_model.py` first to build and check the correctness of the CUDA kernel. See below example command and its output, where it returns `[Success] test CUDA fused vs. plain torch BigVGAN inference`:
 
 ```python
-python test_cuda_vs_torch_model.py \
+python tests/test_cuda_vs_torch_model.py \
 --checkpoint_file /path/to/your/bigvgan_generator.pt
 ```
 
