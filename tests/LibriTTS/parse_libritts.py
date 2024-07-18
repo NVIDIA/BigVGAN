@@ -39,11 +39,11 @@ if __name__ == "__main__":
     data_type_list = ["dev-clean", "dev-other", "test-clean", "test-other"]
     subsample_list = [50, 50, 50, 50]
     for data_type, subsample in zip(data_type_list, subsample_list):
-        print("processing {}".format(data_type))
+        print(f"processing {data_type}")
         data_path = os.path.join(data_root, data_type)
         assert os.path.exists(data_path), (
-            "path {} not found. make sure the path is accessible by creating the symbolic link using the following command: "
-            "ln -s /path/to/your/{} {}".format(data_path, data_path, data_path)
+            f"path {data_path} not found. make sure the path is accessible by creating the symbolic link using the following command: "
+            f"ln -s /path/to/your/{data_path} {data_path}"
         )
         wav_list, txt_list = get_wav_and_text_filelist(data_root, data_type, subsample)
         write_filelist(os.path.join(data_root, data_type + ".txt"), wav_list, txt_list)
@@ -51,11 +51,11 @@ if __name__ == "__main__":
     # Training and seen speaker validation datasets (libritts-full): train-clean-100 + train-clean-360 + train-other-500
     wav_list_train, txt_list_train = [], []
     for data_type in ["train-clean-100", "train-clean-360", "train-other-500"]:
-        print("processing {}".format(data_type))
+        print(f"processing {data_type}")
         data_path = os.path.join(data_root, data_type)
         assert os.path.exists(data_path), (
-            "path {} not found. make sure the path is accessible by creating the symbolic link using the following command: "
-            "ln -s /path/to/your/{} {}".format(data_path, data_path, data_path)
+            f"path {data_path} not found. make sure the path is accessible by creating the symbolic link using the following command: "
+            f"ln -s /path/to/your/{data_path} {data_path}"
         )
         wav_list, txt_list = get_wav_and_text_filelist(data_root, data_type)
         wav_list_train.extend(wav_list)

@@ -43,7 +43,7 @@ def get_mel(x, h):
 
 def load_checkpoint(filepath, device):
     assert os.path.isfile(filepath)
-    print("Loading '{}'".format(filepath))
+    print(f"Loading '{filepath}'")
     checkpoint_dict = torch.load(filepath, map_location=device)
     print("Complete.")
     return checkpoint_dict
@@ -137,22 +137,12 @@ if __name__ == "__main__":
     khz_cuda_kernel = audio_length_total / toc_total_cuda_kernel / 1000
 
     print(
-        "Original BigVGAN: took {:.2f} seconds to generate {:.2f} seconds of audio, {:.1f}kHz, {:.1f} faster than realtime".format(
-            toc_total_original,
-            audio_second,
-            khz_original,
-            audio_second / toc_total_original,
-        )
+        f"Original BigVGAN: took {toc_total_original:.2f} seconds to generate {audio_second:.2f} seconds of audio, {khz_original:.1f}kHz, {audio_second / toc_total_original:.1f} faster than realtime"
     )
     print(
-        "CUDA kernel BigVGAN: took {:.2f} seconds to generate {:.2f} seconds of audio, {:.1f}kHz, {:.1f} faster than realtime".format(
-            toc_total_cuda_kernel,
-            audio_second,
-            khz_cuda_kernel,
-            audio_second / toc_total_cuda_kernel,
-        )
+        f"CUDA kernel BigVGAN: took {toc_total_cuda_kernel:.2f} seconds to generate {audio_second:.2f} seconds of audio, {khz_cuda_kernel:.1f}kHz, {audio_second / toc_total_cuda_kernel:.1f} faster than realtime"
     )
-    print("speedup of CUDA kernel: {}".format(khz_cuda_kernel / khz_original))
+    print(f"speedup of CUDA kernel: {khz_cuda_kernel / khz_original}")
 
     # Use artificial sine waves for inference test
     audio_real, sr = generate_soundwave(duration=5.0, sr=h.sampling_rate)

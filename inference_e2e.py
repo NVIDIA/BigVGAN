@@ -21,7 +21,7 @@ torch.backends.cudnn.benchmark = False
 
 def load_checkpoint(filepath, device):
     assert os.path.isfile(filepath)
-    print("Loading '{}'".format(filepath))
+    print(f"Loading '{filepath}'")
     checkpoint_dict = torch.load(filepath, map_location=device)
     print("Complete.")
     return checkpoint_dict

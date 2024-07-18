@@ -103,7 +103,7 @@ class MultiPeriodDiscriminator(torch.nn.Module):
     def __init__(self, h):
         super().__init__()
         self.mpd_reshapes = h.mpd_reshapes
-        print("mpd_reshapes: {}".format(self.mpd_reshapes))
+        print(f"mpd_reshapes: {self.mpd_reshapes}")
         self.discriminators = nn.ModuleList(
             [
                 DiscriminatorP(h, rs, use_spectral_norm=h.use_spectral_norm)
@@ -134,26 +134,20 @@ class DiscriminatorR(nn.Module):
         self.resolution = resolution
         assert (
             len(self.resolution) == 3
-        ), "MRD layer requires list with len=3, got {}".format(self.resolution)
+        ), f"MRD layer requires list with len=3, got {self.resolution}"
         self.lrelu_slope = 0.1
 
         norm_f = weight_norm if cfg.use_spectral_norm == False else spectral_norm
         if hasattr(cfg, "mrd_use_spectral_norm"):
             print(
-                "INFO: overriding MRD use_spectral_norm as {}".format(
-                    cfg.mrd_use_spectral_norm
-                )
+                f"INFO: overriding MRD use_spectral_norm as {cfg.mrd_use_spectral_norm}"
             )
             norm_f = (
                 weight_norm if cfg.mrd_use_spectral_norm == False else spectral_norm
             )
         self.d_mult = cfg.discriminator_channel_mult
         if hasattr(cfg, "mrd_channel_mult"):
-            print(
-                "INFO: overriding mrd channel multiplier as {}".format(
-                    cfg.mrd_channel_mult
-                )
-            )
+            print(f"INFO: overriding mrd channel multiplier as {cfg.mrd_channel_mult}")
             self.d_mult = cfg.mrd_channel_mult
 
         self.convs = nn.ModuleList(
@@ -243,9 +237,7 @@ class MultiResolutionDiscriminator(nn.Module):
         self.resolutions = cfg.resolutions
         assert (
             len(self.resolutions) == 3
-        ), "MRD requires list of list with len=3, each element having a list with len=3. got {}".format(
-            self.resolutions
-        )
+        ), f"MRD requires list of list with len=3, each element having a list with len=3. Got {self.resolutions}"
         self.discriminators = nn.ModuleList(
             [DiscriminatorR(cfg, resolution) for resolution in self.resolutions]
         )

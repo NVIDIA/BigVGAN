@@ -66,7 +66,7 @@ def train(rank, a, h):
     # Set seed and device
     torch.cuda.manual_seed(h.seed)
     torch.cuda.set_device(rank)
-    device = torch.device("cuda:{:d}".format(rank))
+    device = torch.device(f"cuda:{rank:d}")
 
     # Define BigVGAN generator
     generator = BigVGAN(h).to(device)
@@ -109,23 +109,11 @@ def train(rank, a, h):
         print(generator)
         print(mpd)
         print(mrd)
-        print(
-            "Generator params: {}".format(
-                sum(p.numel() for p in generator.parameters())
-            )
-        )
-        print(
-            "Discriminator mpd params: {}".format(
-                sum(p.numel() for p in mpd.parameters())
-            )
-        )
-        print(
-            "Discriminator mrd params: {}".format(
-                sum(p.numel() for p in mrd.parameters())
-            )
-        )
+        print(f"Generator params: {sum(p.numel() for p in generator.parameters())}")
+        print(f"Discriminator mpd params: {sum(p.numel() for p in mpd.parameters())}")
+        print(f"Discriminator mrd params: {sum(p.numel() for p in mrd.parameters())}")
         os.makedirs(a.checkpoint_path, exist_ok=True)
-        print("checkpoints directory : ", a.checkpoint_path)
+        print(f"Checkpoints directory: {a.checkpoint_path}")
 
     if os.path.isdir(a.checkpoint_path):
         # New in v2.1: If the step prefix pattern-based checkpoints are not found, also check for renamed files in Hugging Face Hub to resume training
@@ -179,7 +167,7 @@ def train(rank, a, h):
     )
 
     # Define training and validation datasets
-    
+
     """
     unseen_validation_filelist will contain sample filepaths outside the seen training & validation dataset
     Example: trained on LibriTTS, validate on VCTK
@@ -291,11 +279,11 @@ def train(rank, a, h):
         if a.save_audio:  # Also save audio to disk if --save_audio is set to True
             os.makedirs(os.path.join(a.checkpoint_path, "samples"), exist_ok=True)
 
-
     """
     Validation loop, "mode" parameter is automatically defined as (seen or unseen)_(name of the dataset).
     If the name of the dataset contains "nonspeech", it skips PESQ calculation to prevent errors 
     """
+
     def validate(rank, a, h, loader, mode="seen"):
         assert rank == 0, "validate should only run on rank=0"
         generator.eval()
@@ -311,18 +299,16 @@ def train(rank, a, h):
 
         if a.save_audio:  # Also save audio to disk if --save_audio is set to True
             os.makedirs(
-                os.path.join(a.checkpoint_path, "samples", "gt_{}".format(mode)),
+                os.path.join(a.checkpoint_path, "samples", f"gt_{mode}"),
                 exist_ok=True,
             )
             os.makedirs(
-                os.path.join(
-                    a.checkpoint_path, "samples", "{}_{:08d}".format(mode, steps)
-                ),
+                os.path.join(a.checkpoint_path, "samples", f"{mode}_{steps:08d}"),
                 exist_ok=True,
             )
 
         with torch.no_grad():
-            print("step {} {} speaker validation...".format(steps, mode))
+            print(f"step {steps} {mode} speaker validation...")
 
             # Loop over validation set and compute metrics
             for j, batch in tqdm(enumerate(loader)):
@@ -349,7 +335,7 @@ def train(rank, a, h):
                 if (
                     not "nonspeech" in mode
                 ):  # Skips if the name of dataset (in mode string) contains "nonspeech"
-                    
+
                     # Resample to 16000 for pesq
                     y_16k = pesq_resampler(y)
                     y_g_hat_16k = pesq_resampler(y_g_hat.squeeze(1))
@@ -365,9 +351,7 @@ def train(rank, a, h):
                 # Log audio and figures to Tensorboard
                 if j % a.eval_subsample == 0:  # Subsample every nth from validation set
                     if steps >= 0:
-                        sw.add_audio(
-                            "gt_{}/y_{}".format(mode, j), y[0], steps, h.sampling_rate
-                        )
+                        sw.add_audio(f"gt_{mode}/y_{j}", y[0], steps, h.sampling_rate)
                         if (
                             a.save_audio
                         ):  # Also save audio to disk if --save_audio is set to True
@@ -376,19 +360,19 @@ def train(rank, a, h):
                                 os.path.join(
                                     a.checkpoint_path,
                                     "samples",
-                                    "gt_{}".format(mode),
-                                    "{:04d}.wav".format(j),
+                                    f"gt_{mode}",
+                                    f"{j:04d}.wav",
                                 ),
                                 h.sampling_rate,
                             )
                         sw.add_figure(
-                            "gt_{}/y_spec_{}".format(mode, j),
+                            f"gt_{mode}/y_spec_{j}",
                             plot_spectrogram(x[0]),
                             steps,
                         )
 
                     sw.add_audio(
-                        "generated_{}/y_hat_{}".format(mode, j),
+                        f"generated_{mode}/y_hat_{j}",
                         y_g_hat[0],
                         steps,
                         h.sampling_rate,
@@ -401,8 +385,8 @@ def train(rank, a, h):
                             os.path.join(
                                 a.checkpoint_path,
                                 "samples",
-                                "{}_{:08d}".format(mode, steps),
-                                "{:04d}.wav".format(j),
+                                f"{mode}_{steps:08d}",
+                                f"{j:04d}.wav",
                             ),
                             h.sampling_rate,
                         )
@@ -418,7 +402,7 @@ def train(rank, a, h):
                         h.fmax,
                     )
                     sw.add_figure(
-                        "generated_{}/y_hat_spec_{}".format(mode, j),
+                        f"generated_{mode}/y_hat_spec_{j}",
                         plot_spectrogram(y_hat_spec.squeeze(0).cpu().numpy()),
                         steps,
                     )
@@ -427,10 +411,12 @@ def train(rank, a, h):
                     Visualization of spectrogram difference between GT and synthesized audio, difference higher than 1 is clipped for better visualization.
                     """
                     spec_delta = torch.clamp(
-                        torch.abs(x[0] - y_hat_spec.squeeze(0).cpu()), min=1e-6, max=1.0
+                        torch.abs(x[0] - y_hat_spec.squeeze(0).cpu()),
+                        min=1e-6,
+                        max=1.0,
                     )
                     sw.add_figure(
-                        "delta_dclip1_{}/spec_{}".format(mode, j),
+                        f"delta_dclip1_{mode}/spec_{j}",
                         plot_spectrogram_clipped(spec_delta.numpy(), clip_max=1.0),
                         steps,
                     )
@@ -439,9 +425,9 @@ def train(rank, a, h):
             val_pesq = val_pesq_tot / (j + 1)
             val_mrstft = val_mrstft_tot / (j + 1)
             # Log evaluation metrics to Tensorboard
-            sw.add_scalar("validation_{}/mel_spec_error".format(mode), val_err, steps)
-            sw.add_scalar("validation_{}/pesq".format(mode), val_pesq, steps)
-            sw.add_scalar("validation_{}/mrstft".format(mode), val_mrstft, steps)
+            sw.add_scalar(f"validation_{mode}/mel_spec_error", val_err, steps)
+            sw.add_scalar(f"validation_{mode}/pesq", val_pesq, steps)
+            sw.add_scalar(f"validation_{mode}/mrstft", val_mrstft, steps)
 
         generator.train()
 
@@ -453,7 +439,7 @@ def train(rank, a, h):
                 a,
                 h,
                 validation_loader,
-                mode="seen_{}".format(train_loader.dataset.name),
+                mode=f"seen_{train_loader.dataset.name}",
             )
         for i in range(len(list_unseen_validation_loader)):
             validate(
@@ -461,7 +447,7 @@ def train(rank, a, h):
                 a,
                 h,
                 list_unseen_validation_loader[i],
-                mode="unseen_{}".format(list_unseen_validation_loader[i].dataset.name),
+                mode=f"unseen_{list_unseen_validation_loader[i].dataset.name}",
             )
     # Exit the script if --evaluate is set to True
     if a.evaluate:
@@ -474,7 +460,7 @@ def train(rank, a, h):
     for epoch in range(max(0, last_epoch), a.training_epochs):
         if rank == 0:
             start = time.time()
-            print("Epoch: {}".format(epoch + 1))
+            print(f"Epoch: {epoch + 1}")
 
         if h.num_gpus > 1:
             train_sampler.set_epoch(epoch)
@@ -532,9 +518,7 @@ def train(rank, a, h):
                 optim_d.step()
             else:
                 print(
-                    "WARNING: skipping D training for the first {} steps".format(
-                        a.freeze_step
-                    )
+                    f"WARNING: skipping D training for the first {a.freeze_step} steps"
                 )
                 grad_norm_mpd = 0.0
                 grad_norm_mrd = 0.0
@@ -567,9 +551,7 @@ def train(rank, a, h):
                 )
             else:
                 print(
-                    "WARNING: using regression loss only for G for the first {} steps".format(
-                        a.freeze_step
-                    )
+                    f"WARNING: using regression loss only for G for the first {a.freeze_step} steps"
                 )
                 loss_gen_all = loss_mel
 
@@ -596,7 +578,7 @@ def train(rank, a, h):
 
                 # Checkpointing
                 if steps % a.checkpoint_interval == 0 and steps != 0:
-                    checkpoint_path = "{}/g_{:08d}".format(a.checkpoint_path, steps)
+                    checkpoint_path = f"{a.checkpoint_path}/g_{steps:08d}"
                     save_checkpoint(
                         checkpoint_path,
                         {
@@ -605,7 +587,7 @@ def train(rank, a, h):
                             ).state_dict()
                         },
                     )
-                    checkpoint_path = "{}/do_{:08d}".format(a.checkpoint_path, steps)
+                    checkpoint_path = f"{a.checkpoint_path}/do_{steps:08d}"
                     save_checkpoint(
                         checkpoint_path,
                         {
@@ -647,12 +629,12 @@ def train(rank, a, h):
                     # Plot training input x so far used
                     for i_x in range(x.shape[0]):
                         sw.add_figure(
-                            "training_input/x_{}".format(i_x),
+                            f"training_input/x_{i_x}",
                             plot_spectrogram(x[i_x].cpu()),
                             steps,
                         )
                         sw.add_audio(
-                            "training_input/y_{}".format(i_x),
+                            f"training_input/y_{i_x}",
                             y[i_x][0],
                             steps,
                             h.sampling_rate,
@@ -665,7 +647,7 @@ def train(rank, a, h):
                             a,
                             h,
                             validation_loader,
-                            mode="seen_{}".format(train_loader.dataset.name),
+                            mode=f"seen_{train_loader.dataset.name}",
                         )
                         for i in range(len(list_unseen_validation_loader)):
                             validate(
@@ -673,9 +655,7 @@ def train(rank, a, h):
                                 a,
                                 h,
                                 list_unseen_validation_loader[i],
-                                mode="unseen_{}".format(
-                                    list_unseen_validation_loader[i].dataset.name
-                                ),
+                                mode=f"unseen_{list_unseen_validation_loader[i].dataset.name}",
                             )
             steps += 1
 
@@ -685,9 +665,7 @@ def train(rank, a, h):
 
         if rank == 0:
             print(
-                "Time taken for epoch {} is {} sec\n".format(
-                    epoch + 1, int(time.time() - start)
-                )
+                f"Time taken for epoch {epoch + 1} is {int(time.time() - start)} sec\n"
             )
 
 
@@ -700,11 +678,17 @@ def main():
 
     parser.add_argument("--input_wavs_dir", default="LibriTTS")
     parser.add_argument("--input_mels_dir", default="ft_dataset")
-    parser.add_argument("--input_training_file", default="tests/LibriTTS/train-full.txt")
-    parser.add_argument("--input_validation_file", default="tests/LibriTTS/val-full.txt")
+    parser.add_argument(
+        "--input_training_file", default="tests/LibriTTS/train-full.txt"
+    )
+    parser.add_argument(
+        "--input_validation_file", default="tests/LibriTTS/val-full.txt"
+    )
 
     parser.add_argument(
-        "--list_input_unseen_wavs_dir", nargs="+", default=["tests/LibriTTS", "tests/LibriTTS"]
+        "--list_input_unseen_wavs_dir",
+        nargs="+",
+        default=["tests/LibriTTS", "tests/LibriTTS"],
     )
     parser.add_argument(
         "--list_input_unseen_validation_file",
@@ -776,7 +760,7 @@ def main():
         torch.cuda.manual_seed(h.seed)
         h.num_gpus = torch.cuda.device_count()
         h.batch_size = int(h.batch_size / h.num_gpus)
-        print("Batch size per GPU :", h.batch_size)
+        print(f"Batch size per GPU: {h.batch_size}")
     else:
         pass
 
