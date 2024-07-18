@@ -3,7 +3,7 @@
 
 import torch
 import torch.nn as nn
-from alias.torch.resample import UpSample1d, DownSample1d
+from alias_free_activation.torch.resample import UpSample1d, DownSample1d
 
 # load fused CUDA kernel: this enables importing anti_alias_activation_cuda
 from cuda import load
