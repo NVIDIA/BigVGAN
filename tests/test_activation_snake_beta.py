@@ -2,7 +2,7 @@
 #   Licensed under the MIT license.
 
 import torch
-from alias.cuda import activation1d
+from alias_free_activation.cuda import activation1d
 from activations import SnakeBeta
 
 
@@ -52,7 +52,7 @@ def test_anti_alias_activation():
 
 
 if __name__ == "__main__":
-    from alias.cuda import load
+    from alias_free_activation.cuda import load
 
     load.load()
     test_load_fused_kernels()
