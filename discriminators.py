@@ -19,10 +19,11 @@ from typing import Optional, List, Union, Dict, Tuple
 
 class DiscriminatorP(torch.nn.Module):
     def __init__(self, h, period, kernel_size=5, stride=3, use_spectral_norm=False):
-        super(DiscriminatorP, self).__init__()
+        super().__init__()
         self.period = period
         self.d_mult = h.discriminator_channel_mult
-        norm_f = weight_norm if use_spectral_norm == False else spectral_norm
+        norm_f = weight_norm if not use_spectral_norm else spectral_norm
+
         self.convs = nn.ModuleList(
             [
                 norm_f(
@@ -100,14 +101,15 @@ class DiscriminatorP(torch.nn.Module):
 
 class MultiPeriodDiscriminator(torch.nn.Module):
     def __init__(self, h):
-        super(MultiPeriodDiscriminator, self).__init__()
+        super().__init__()
         self.mpd_reshapes = h.mpd_reshapes
         print("mpd_reshapes: {}".format(self.mpd_reshapes))
-        discriminators = [
-            DiscriminatorP(h, rs, use_spectral_norm=h.use_spectral_norm)
-            for rs in self.mpd_reshapes
-        ]
-        self.discriminators = nn.ModuleList(discriminators)
+        self.discriminators = nn.ModuleList(
+            [
+                DiscriminatorP(h, rs, use_spectral_norm=h.use_spectral_norm)
+                for rs in self.mpd_reshapes
+            ]
+        )
 
     def forward(self, y, y_hat):
         y_d_rs = []
@@ -425,7 +427,7 @@ class DiscriminatorCQT(nn.Module):
         )
 
         self.conv_pres = nn.ModuleList()
-        for i in range(self.n_octaves):
+        for _ in range(self.n_octaves):
             self.conv_pres.append(
                 nn.Conv2d(
                     self.in_channels * 2,
