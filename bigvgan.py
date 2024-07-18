@@ -7,7 +7,6 @@
 import os
 import json
 from pathlib import Path
-
 from typing import Optional, Union, Dict
 
 import torch
@@ -26,14 +25,48 @@ from huggingface_hub import PyTorchModelHubMixin, hf_hub_download
 def load_hparams_from_json(path) -> AttrDict:
     with open(path) as f:
         data = f.read()
-    h = json.loads(data)
-    return AttrDict(h)
+    return AttrDict(json.loads(data))
 
 
-class AMPBlock1(torch.nn.Module):
-    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5), activation=None):
-        super(AMPBlock1, self).__init__()
+class AMPBlockBase(torch.nn.Module):
+    def __init__(self, h, channels, kernel_size, dilation, activation):
+        super().__init__()
         self.h = h
+
+        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
+        if self.h.get("use_cuda_kernel", False):
+            from alias.cuda.activation1d import Activation1d as CudaActivation1d
+
+            Activation1d = CudaActivation1d
+        else:
+            Activation1d = TorchActivation1d
+
+        # Activation functions
+        if activation == "snake":
+            self.activation = Activation1d(
+                activation=activations.Snake(channels, alpha_logscale=h.snake_logscale)
+            )
+        elif activation == "snakebeta":
+            self.activation = Activation1d(
+                activation=activations.SnakeBeta(
+                    channels, alpha_logscale=h.snake_logscale
+                )
+            )
+        else:
+            raise NotImplementedError(
+                "activation incorrectly specified. check the config file and look for 'activation'."
+            )
+
+    def forward(self, x):
+        raise NotImplementedError
+
+    def remove_weight_norm(self):
+        raise NotImplementedError
+
+
+class AMPBlock1(AMPBlockBase):
+    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5), activation=None):
+        super().__init__(h, channels, kernel_size, dilation, activation)
 
         self.convs1 = nn.ModuleList(
             [
@@ -43,30 +76,11 @@ class AMPBlock1(torch.nn.Module):
                         channels,
                         kernel_size,
                         1,
-                        dilation=dilation[0],
-                        padding=get_padding(kernel_size, dilation[0]),
+                        dilation=d,
+                        padding=get_padding(kernel_size, d),
                     )
-                ),
-                weight_norm(
-                    Conv1d(
-                        channels,
-                        channels,
-                        kernel_size,
-                        1,
-                        dilation=dilation[1],
-                        padding=get_padding(kernel_size, dilation[1]),
-                    )
-                ),
-                weight_norm(
-                    Conv1d(
-                        channels,
-                        channels,
-                        kernel_size,
-                        1,
-                        dilation=dilation[2],
-                        padding=get_padding(kernel_size, dilation[2]),
-                    )
-                ),
+                )
+                for d in dilation
             ]
         )
         self.convs1.apply(init_weights)
@@ -82,81 +96,19 @@ class AMPBlock1(torch.nn.Module):
                         dilation=1,
                         padding=get_padding(kernel_size, 1),
                     )
-                ),
-                weight_norm(
-                    Conv1d(
-                        channels,
-                        channels,
-                        kernel_size,
-                        1,
-                        dilation=1,
-                        padding=get_padding(kernel_size, 1),
-                    )
-                ),
-                weight_norm(
-                    Conv1d(
-                        channels,
-                        channels,
-                        kernel_size,
-                        1,
-                        dilation=1,
-                        padding=get_padding(kernel_size, 1),
-                    )
-                ),
+                )
+                for _ in range(3)
             ]
         )
         self.convs2.apply(init_weights)
 
-        self.num_layers = len(self.convs1) + len(
-            self.convs2
-        )  # Total number of conv layers
-
-        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
-        if self.h.get("use_cuda_kernel", False):
-            # Faster CUDA kernel implementation of Activation1d
-            from alias.cuda.activation1d import Activation1d as CudaActivation1d
-
-            Activation1d = CudaActivation1d
-        else:
-            Activation1d = TorchActivation1d
-
-        if (
-            activation == "snake"
-        ):  # Periodic nonlinearity with snake function and anti-aliasing
-            self.activations = nn.ModuleList(
-                [
-                    Activation1d(
-                        activation=activations.Snake(
-                            channels, alpha_logscale=h.snake_logscale
-                        )
-                    )
-                    for _ in range(self.num_layers)
-                ]
-            )
-        elif (
-            activation == "snakebeta"
-        ):  # Periodic nonlinearity with snakebeta function and anti-aliasing
-            self.activations = nn.ModuleList(
-                [
-                    Activation1d(
-                        activation=activations.SnakeBeta(
-                            channels, alpha_logscale=h.snake_logscale
-                        )
-                    )
-                    for _ in range(self.num_layers)
-                ]
-            )
-        else:
-            raise NotImplementedError(
-                "activation incorrectly specified. check the config file and look for 'activation'."
-            )
+        self.num_layers = len(self.convs1) + len(self.convs2)
 
     def forward(self, x):
-        acts1, acts2 = self.activations[::2], self.activations[1::2]
-        for c1, c2, a1, a2 in zip(self.convs1, self.convs2, acts1, acts2):
-            xt = a1(x)
+        for c1, c2 in zip(self.convs1, self.convs2):
+            xt = self.activation(x)
             xt = c1(xt)
-            xt = a2(xt)
+            xt = self.activation(xt)
             xt = c2(xt)
             x = xt + x
 
@@ -169,10 +121,9 @@ class AMPBlock1(torch.nn.Module):
             remove_weight_norm(l)
 
 
-class AMPBlock2(torch.nn.Module):
+class AMPBlock2(AMPBlockBase):
     def __init__(self, h, channels, kernel_size=3, dilation=(1, 3), activation=None):
-        super(AMPBlock2, self).__init__()
-        self.h = h
+        super().__init__(h, channels, kernel_size, dilation, activation)
 
         self.convs = nn.ModuleList(
             [
@@ -182,69 +133,20 @@ class AMPBlock2(torch.nn.Module):
                         channels,
                         kernel_size,
                         1,
-                        dilation=dilation[0],
-                        padding=get_padding(kernel_size, dilation[0]),
+                        dilation=d,
+                        padding=get_padding(kernel_size, d),
                     )
-                ),
-                weight_norm(
-                    Conv1d(
-                        channels,
-                        channels,
-                        kernel_size,
-                        1,
-                        dilation=dilation[1],
-                        padding=get_padding(kernel_size, dilation[1]),
-                    )
-                ),
+                )
+                for d in dilation
             ]
         )
         self.convs.apply(init_weights)
 
-        self.num_layers = len(self.convs)  # Total number of conv layers
-
-        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
-        if self.h.get("use_cuda_kernel", False):
-            # Faster CUDA kernel implementation of Activation1d
-            from alias.cuda.activation1d import Activation1d as CudaActivation1d
-
-            Activation1d = CudaActivation1d
-        else:
-            Activation1d = TorchActivation1d
-
-        if (
-            activation == "snake"
-        ):  # Periodic nonlinearity with snake function and anti-aliasing
-            self.activations = nn.ModuleList(
-                [
-                    Activation1d(
-                        activation=activations.Snake(
-                            channels, alpha_logscale=h.snake_logscale
-                        )
-                    )
-                    for _ in range(self.num_layers)
-                ]
-            )
-        elif (
-            activation == "snakebeta"
-        ):  # Periodic nonlinearity with snakebeta function and anti-aliasing
-            self.activations = nn.ModuleList(
-                [
-                    Activation1d(
-                        activation=activations.SnakeBeta(
-                            channels, alpha_logscale=h.snake_logscale
-                        )
-                    )
-                    for _ in range(self.num_layers)
-                ]
-            )
-        else:
-            raise NotImplementedError(
-                "activation incorrectly specified. check the config file and look for 'activation'."
-            )
+        self.num_layers = len(self.convs)
 
     def forward(self, x):
-        for c, a in zip(self.convs, self.activations):
-            xt = a(x)
+        for c in self.convs:
+            xt = self.activation(x)
             xt = c(xt)
             x = xt + x
 
@@ -268,16 +170,14 @@ class BigVGAN(
     """
     This is our main BigVGAN model. Applies anti-aliased periodic activation for resblocks.
     New in v2: if use_cuda_kernel is set to True, it loads optimized CUDA kernels for AMP.
-    
+
     NOTE: use_cuda_kernel=True should be used for inference only (training is not supported).
     """
-    
+
     def __init__(self, h, use_cuda_kernel: bool = False):
-        super(BigVGAN, self).__init__()
+        super().__init__()
         self.h = h
-        self.h["use_cuda_kernel"] = (
-            use_cuda_kernel  # Add it to global hyperparameters (h)
-        )
+        self.h["use_cuda_kernel"] = use_cuda_kernel
 
         self.num_kernels = len(h.resblock_kernel_sizes)
         self.num_upsamples = len(h.upsample_rates)
@@ -288,7 +188,7 @@ class BigVGAN(
         )
 
         # Define which AMPBlock to use. BigVGAN uses AMPBlock1 as default
-        resblock = AMPBlock1 if h.resblock == "1" else AMPBlock2
+        resblock_class = AMPBlock1 if h.resblock == "1" else AMPBlock2
 
         # Transposed conv-based upsamplers. does not apply anti-aliasing
         self.ups = nn.ModuleList()
@@ -316,32 +216,26 @@ class BigVGAN(
             for j, (k, d) in enumerate(
                 zip(h.resblock_kernel_sizes, h.resblock_dilation_sizes)
             ):
-                self.resblocks.append(resblock(h, ch, k, d, activation=h.activation))
-
-        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
-        if self.h.get("use_cuda_kernel", False):
-            # Faster CUDA kernel implementation of Activation1d
-            from alias.cuda.activation1d import Activation1d as CudaActivation1d
-
-            Activation1d = CudaActivation1d
-        else:
-            Activation1d = TorchActivation1d
+                self.resblocks.append(
+                    resblock_class(h, ch, k, d, activation=h.activation)
+                )
 
         # Post-conv
-        if (
-            h.activation == "snake"
-        ):  # Periodic nonlinearity with snake function and anti-aliasing
-            activation_post = activations.Snake(ch, alpha_logscale=h.snake_logscale)
-            self.activation_post = Activation1d(activation=activation_post)
-        elif (
-            h.activation == "snakebeta"
-        ):  # Periodic nonlinearity with snakebeta function and anti-aliasing
-            activation_post = activations.SnakeBeta(ch, alpha_logscale=h.snake_logscale)
-            self.activation_post = Activation1d(activation=activation_post)
-        else:
+        activation_post = (
+            activations.Snake(ch, alpha_logscale=h.snake_logscale)
+            if h.activation == "snake"
+            else (
+                activations.SnakeBeta(ch, alpha_logscale=h.snake_logscale)
+                if h.activation == "snakebeta"
+                else None
+            )
+        )
+        if activation_post is None:
             raise NotImplementedError(
                 "activation incorrectly specified. check the config file and look for 'activation'."
             )
+
+        self.activation_post = Activation1d(activation=activation_post)
 
         # Whether to use bias for the final conv_post. Default to True for backward compatibility
         self.use_bias_at_final = h.get("use_bias_at_final", True)
