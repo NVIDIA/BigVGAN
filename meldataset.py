@@ -23,9 +23,7 @@ def load_wav(full_path, sr_target):
     sampling_rate, data = read(full_path)
     if sampling_rate != sr_target:
         raise RuntimeError(
-            "Sampling rate of the file {} is {} Hz, but the model requires {} Hz".format(
-                full_path, sampling_rate, sr_target
-            )
+            f"Sampling rate of the file {full_path} is {sampling_rate} Hz, but the model requires {sr_target} Hz"
         )
     return data, sampling_rate
 
@@ -47,13 +45,11 @@ def dynamic_range_decompression_torch(x, C=1):
 
 
 def spectral_normalize_torch(magnitudes):
-    output = dynamic_range_compression_torch(magnitudes)
-    return output
+    return dynamic_range_compression_torch(magnitudes)
 
 
 def spectral_de_normalize_torch(magnitudes):
-    output = dynamic_range_decompression_torch(magnitudes)
-    return output
+    return dynamic_range_decompression_torch(magnitudes)
 
 
 mel_basis = {}
@@ -69,13 +65,14 @@ def mel_spectrogram(
         print("max value is ", torch.max(y))
 
     global mel_basis, hann_window
-    if fmax not in mel_basis:
+    device = y.device
+    key = f"{fmax}_{device}"
+    if key not in mel_basis:
         mel = librosa_mel_fn(
             sr=sampling_rate, n_fft=n_fft, n_mels=num_mels, fmin=fmin, fmax=fmax
         )
-        str_key_mel_basis = str(fmax) + "_" + str(y.device)
-        mel_basis[str_key_mel_basis] = torch.from_numpy(mel).float().to(y.device)
-        hann_window[str(y.device)] = torch.hann_window(win_size).to(y.device)
+        mel_basis[key] = torch.from_numpy(mel).float().to(device)
+        hann_window[str(device)] = torch.hann_window(win_size).to(device)
 
     y = torch.nn.functional.pad(
         y.unsqueeze(1),
@@ -90,7 +87,7 @@ def mel_spectrogram(
         n_fft,
         hop_length=hop_size,
         win_length=win_size,
-        window=hann_window[str(y.device)],
+        window=hann_window[str(device)],
         center=center,
         pad_mode="reflect",
         normalized=False,
@@ -100,7 +97,7 @@ def mel_spectrogram(
     spec = torch.view_as_real(spec)
     spec = torch.sqrt(spec.pow(2).sum(-1) + (1e-9))
 
-    spec = torch.matmul(mel_basis[str_key_mel_basis], spec)
+    spec = torch.matmul(mel_basis[key], spec)
     spec = spectral_normalize_torch(spec)
 
     return spec
@@ -120,13 +117,17 @@ def get_mel_spectrogram(wav, h):
 
 
 def get_dataset_filelist(a):
+    training_files = []
+    validation_files = []
+    list_unseen_validation_files = []
+
     with open(a.input_training_file, "r", encoding="utf-8") as fi:
         training_files = [
             os.path.join(a.input_wavs_dir, x.split("|")[0] + ".wav")
             for x in fi.read().split("\n")
             if len(x) > 0
         ]
-        print("first training file: {}".format(training_files[0]))
+        print(f"first training file: {training_files[0]}")
 
     with open(a.input_validation_file, "r", encoding="utf-8") as fi:
         validation_files = [
@@ -134,9 +135,8 @@ def get_dataset_filelist(a):
             for x in fi.read().split("\n")
             if len(x) > 0
         ]
-        print("first validation file: {}".format(validation_files[0]))
+        print(f"first validation file: {validation_files[0]}")
 
-    list_unseen_validation_files = []
     for i in range(len(a.list_input_unseen_validation_file)):
         with open(a.list_input_unseen_validation_file[i], "r", encoding="utf-8") as fi:
             unseen_validation_files = [
@@ -145,9 +145,7 @@ def get_dataset_filelist(a):
                 if len(x) > 0
             ]
             print(
-                "first unseen {}th validation fileset: {}".format(
-                    i, unseen_validation_files[0]
-                )
+                f"first unseen {i}th validation fileset: {unseen_validation_files[0]}"
             )
             list_unseen_validation_files.append(unseen_validation_files)
 
@@ -206,12 +204,11 @@ class MelDataset(torch.utils.data.Dataset):
 
         print("INFO: checking dataset integrity...")
         for i in tqdm(range(len(self.audio_files))):
-            assert os.path.exists(self.audio_files[i]), "{} not found".format(
+            assert os.path.exists(
                 self.audio_files[i]
-            )
+            ), f"{self.audio_files[i]} not found"
 
     def __getitem__(self, index):
-
         filename = self.audio_files[index]
         if self._cache_ref_count == 0:
             audio, sampling_rate = load_wav(filename, self.sampling_rate)
@@ -221,9 +218,7 @@ class MelDataset(torch.utils.data.Dataset):
             self.cached_wav = audio
             if sampling_rate != self.sampling_rate:
                 raise ValueError(
-                    "{} SR doesn't match target {} SR".format(
-                        sampling_rate, self.sampling_rate
-                    )
+                    f"{sampling_rate} SR doesn't match target {self.sampling_rate} SR"
                 )
             self._cache_ref_count = self.n_cache_reuse
         else:
@@ -272,7 +267,7 @@ class MelDataset(torch.utils.data.Dataset):
                 )
                 assert (
                     audio.shape[1] == mel.shape[2] * self.hop_size
-                ), "audio shape {} mel shape {}".format(audio.shape, mel.shape)
+                ), f"audio shape {audio.shape} mel shape {mel.shape}"
 
         else:
             mel = np.load(
