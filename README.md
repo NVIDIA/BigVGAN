@@ -87,7 +87,7 @@ python demo/app.py
 Create symbolic link to the root of the dataset. The codebase uses filelist with the relative path from the dataset. Below are the example commands for LibriTTS dataset:
 
 ```shell
-cd LibriTTS && \
+cd filelists/LibriTTS && \
 ln -s /path/to/your/LibriTTS/train-clean-100 train-clean-100 && \
 ln -s /path/to/your/LibriTTS/train-clean-360 train-clean-360 && \
 ln -s /path/to/your/LibriTTS/train-other-500 train-other-500 && \
@@ -103,11 +103,11 @@ Train BigVGAN model. Below is an example command for training BigVGAN-v2 using L
 ```shell
 python train.py \
 --config configs/bigvgan_v2_24khz_100band_256x.json \
---input_wavs_dir tests/LibriTTS \
---input_training_file tests/LibriTTS/train-full.txt \
---input_validation_file tests/LibriTTS/val-full.txt \
---list_input_unseen_wavs_dir tests/LibriTTS tests/LibriTTS \
---list_input_unseen_validation_file tests/LibriTTS/dev-clean.txt tests/LibriTTS/dev-other.txt \
+--input_wavs_dir filelists/LibriTTS \
+--input_training_file filelists/LibriTTS/train-full.txt \
+--input_validation_file filelists/LibriTTS/val-full.txt \
+--list_input_unseen_wavs_dir filelists/LibriTTS filelists/LibriTTS \
+--list_input_unseen_validation_file filelists/LibriTTS/dev-clean.txt filelists/LibriTTS/dev-other.txt \
 --checkpoint_path exp/bigvgan_v2_24khz_100band_256x
 ```
 
