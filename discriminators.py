@@ -12,13 +12,21 @@ from torch.nn import Conv2d
 from torch.nn.utils import weight_norm, spectral_norm
 from torchaudio.transforms import Spectrogram, Resample
 
+from env import AttrDict
 from utils import get_padding
 import typing
 from typing import Optional, List, Union, Dict, Tuple
 
 
 class DiscriminatorP(torch.nn.Module):
-    def __init__(self, h, period, kernel_size=5, stride=3, use_spectral_norm=False):
+    def __init__(
+        self,
+        h: AttrDict,
+        period: List[int],
+        kernel_size: int = 5,
+        stride: int = 3,
+        use_spectral_norm: bool = False,
+    ):
         super().__init__()
         self.period = period
         self.d_mult = h.discriminator_channel_mult
@@ -77,7 +85,7 @@ class DiscriminatorP(torch.nn.Module):
             Conv2d(int(1024 * self.d_mult), 1, (3, 1), 1, padding=(1, 0))
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         fmap = []
 
         # 1d to 2d
@@ -100,7 +108,7 @@ class DiscriminatorP(torch.nn.Module):
 
 
 class MultiPeriodDiscriminator(torch.nn.Module):
-    def __init__(self, h):
+    def __init__(self, h: AttrDict):
         super().__init__()
         self.mpd_reshapes = h.mpd_reshapes
         print(f"mpd_reshapes: {self.mpd_reshapes}")
@@ -111,7 +119,12 @@ class MultiPeriodDiscriminator(torch.nn.Module):
             ]
         )
 
-    def forward(self, y, y_hat):
+    def forward(self, y: torch.Tensor, y_hat: torch.Tensor) -> Tuple[
+        List[torch.Tensor],
+        List[torch.Tensor],
+        List[List[torch.Tensor]],
+        List[List[torch.Tensor]],
+    ]:
         y_d_rs = []
         y_d_gs = []
         fmap_rs = []
@@ -128,7 +141,7 @@ class MultiPeriodDiscriminator(torch.nn.Module):
 
 
 class DiscriminatorR(nn.Module):
-    def __init__(self, cfg, resolution):
+    def __init__(self, cfg: AttrDict, resolution: List[List[int]]):
         super().__init__()
 
         self.resolution = resolution
@@ -140,14 +153,14 @@ class DiscriminatorR(nn.Module):
         norm_f = weight_norm if cfg.use_spectral_norm == False else spectral_norm
         if hasattr(cfg, "mrd_use_spectral_norm"):
             print(
-                f"INFO: overriding MRD use_spectral_norm as {cfg.mrd_use_spectral_norm}"
+                f"[INFO] overriding MRD use_spectral_norm as {cfg.mrd_use_spectral_norm}"
             )
             norm_f = (
                 weight_norm if cfg.mrd_use_spectral_norm == False else spectral_norm
             )
         self.d_mult = cfg.discriminator_channel_mult
         if hasattr(cfg, "mrd_channel_mult"):
-            print(f"INFO: overriding mrd channel multiplier as {cfg.mrd_channel_mult}")
+            print(f"[INFO] overriding mrd channel multiplier as {cfg.mrd_channel_mult}")
             self.d_mult = cfg.mrd_channel_mult
 
         self.convs = nn.ModuleList(
@@ -194,7 +207,7 @@ class DiscriminatorR(nn.Module):
             nn.Conv2d(int(32 * self.d_mult), 1, (3, 3), padding=(1, 1))
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         fmap = []
 
         x = self.spectrogram(x)
@@ -209,7 +222,7 @@ class DiscriminatorR(nn.Module):
 
         return x, fmap
 
-    def spectrogram(self, x):
+    def spectrogram(self, x: torch.Tensor) -> torch.Tensor:
         n_fft, hop_length, win_length = self.resolution
         x = F.pad(
             x,
@@ -242,7 +255,12 @@ class MultiResolutionDiscriminator(nn.Module):
             [DiscriminatorR(cfg, resolution) for resolution in self.resolutions]
         )
 
-    def forward(self, y, y_hat):
+    def forward(self, y: torch.Tensor, y_hat: torch.Tensor) -> Tuple[
+        List[torch.Tensor],
+        List[torch.Tensor],
+        List[List[torch.Tensor]],
+        List[List[torch.Tensor]],
+    ]:
         y_d_rs = []
         y_d_gs = []
         fmap_rs = []
@@ -311,7 +329,7 @@ class DiscriminatorB(nn.Module):
             nn.Conv2d(channels, 1, (3, 3), (1, 1), padding=(1, 1))
         )
 
-    def spectrogram(self, x):
+    def spectrogram(self, x: torch.Tensor) -> List[torch.Tensor]:
         # Remove DC offset
         x = x - x.mean(dim=-1, keepdims=True)
         # Peak normalize the volume of input audio
@@ -323,7 +341,7 @@ class DiscriminatorB(nn.Module):
         x_bands = [x[..., b[0] : b[1]] for b in self.bands]
         return x_bands
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         x_bands = self.spectrogram(x.squeeze(1))
         fmap = []
         x = []
@@ -388,7 +406,7 @@ class MultiBandDiscriminator(nn.Module):
 # Adapted from https://github.com/open-mmlab/Amphion/blob/main/models/vocoders/gan/discriminator/mssbcqtd.py under the MIT license.
 #   LICENSE is in incl_licenses directory.
 class DiscriminatorCQT(nn.Module):
-    def __init__(self, cfg, hop_length, n_octaves, bins_per_octave):
+    def __init__(self, cfg: AttrDict, hop_length: int, n_octaves:int, bins_per_octave: int):
         super().__init__()
         self.cfg = cfg
 
@@ -490,7 +508,7 @@ class DiscriminatorCQT(nn.Module):
         self.cqtd_normalize_volume = self.cfg.get("cqtd_normalize_volume", False)
         if self.cqtd_normalize_volume:
             print(
-                f"INFO: cqtd_normalize_volume set to True. Will apply DC offset removal & peak volume normalization in CQTD!"
+                f"[INFO] cqtd_normalize_volume set to True. Will apply DC offset removal & peak volume normalization in CQTD!"
             )
 
     def get_2d_padding(
@@ -503,7 +521,7 @@ class DiscriminatorCQT(nn.Module):
             ((kernel_size[1] - 1) * dilation[1]) // 2,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         fmap = []
 
         if self.cqtd_normalize_volume:
@@ -548,7 +566,7 @@ class DiscriminatorCQT(nn.Module):
 
 
 class MultiScaleSubbandCQTDiscriminator(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg: AttrDict):
         super().__init__()
 
         self.cfg = cfg

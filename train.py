@@ -78,25 +78,22 @@ def train(rank, a, h):
     # New in BigVGAN-v2: option to switch to new discriminators: MultiBandDiscriminator / MultiScaleSubbandCQTDiscriminator
     if h.get("use_mbd_instead_of_mrd", False):  # Switch to MBD
         print(
-            "INFO: using MultiBandDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator"
+            "[INFO] using MultiBandDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator"
         )
-        mrd = MultiBandDiscriminator(h).to(
-            device
-        )  # Variable name is kept as "mrd" for backward compatibility & minimal code change
-    elif h.get("use_cqtd_instead_of_mrd", False):  # Switch CQTD
+        # Variable name is kept as "mrd" for backward compatibility & minimal code change
+        mrd = MultiBandDiscriminator(h).to(device)
+    elif h.get("use_cqtd_instead_of_mrd", False):  # Switch to CQTD
         print(
-            "INFO: using MultiScaleSubbandCQTDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator"
+            "[INFO] using MultiScaleSubbandCQTDiscriminator of BigVGAN-v2 instead of MultiResolutionDiscriminator"
         )
         mrd = MultiScaleSubbandCQTDiscriminator(h).to(device)
-    else:
-        mrd = MultiResolutionDiscriminator(h).to(
-            device
-        )  # Fallback to original MRD in BigVGAN-v1
+    else:  # Fallback to original MRD in BigVGAN-v1
+        mrd = MultiResolutionDiscriminator(h).to(device)
 
     # New in BigVGAN-v2: option to switch to multi-scale L1 mel loss
     if h.get("use_multiscale_melloss", False):
         print(
-            "INFO: using multi-scale Mel l1 loss of BigVGAN-v2 instead of the original single-scale loss"
+            "[INFO] using multi-scale Mel l1 loss of BigVGAN-v2 instead of the original single-scale loss"
         )
         fn_mel_loss_multiscale = MultiScaleMelSpectrogramLoss(
             sampling_rate=h.sampling_rate
@@ -518,7 +515,7 @@ def train(rank, a, h):
                 optim_d.step()
             else:
                 print(
-                    f"WARNING: skipping D training for the first {a.freeze_step} steps"
+                    f"[WARNING] skipping D training for the first {a.freeze_step} steps"
                 )
                 grad_norm_mpd = 0.0
                 grad_norm_mrd = 0.0
@@ -529,7 +526,7 @@ def train(rank, a, h):
             # L1 Mel-Spectrogram Loss
             lambda_melloss = h.get(
                 "lambda_melloss", 45.0
-            )  # Default to 45 in BigVGAN-v1 if not set
+            )  # Defaults to 45 in BigVGAN-v1 if not set
             if h.get("use_multiscale_melloss", False):  # uses wav <y, y_g_hat> for loss
                 loss_mel = fn_mel_loss_multiscale(y, y_g_hat) * lambda_melloss
             else:  # Uses mel <y_mel, y_g_hat_mel> for loss
@@ -551,7 +548,7 @@ def train(rank, a, h):
                 )
             else:
                 print(
-                    f"WARNING: using regression loss only for G for the first {a.freeze_step} steps"
+                    f"[WARNING] using regression loss only for G for the first {a.freeze_step} steps"
                 )
                 loss_gen_all = loss_mel
 
@@ -566,7 +563,7 @@ def train(rank, a, h):
                 if steps % a.stdout_interval == 0:
                     mel_error = (
                         loss_mel.item() / lambda_melloss
-                    )  # log training mel regression loss to stdout
+                    )  # Log training mel regression loss to stdout
                     print(
                         f"Steps: {steps:d}, "
                         f"Gen Loss Total: {loss_gen_all:4.3f}, "

@@ -28,45 +28,30 @@ def load_hparams_from_json(path) -> AttrDict:
     return AttrDict(json.loads(data))
 
 
-class AMPBlockBase(torch.nn.Module):
-    def __init__(self, h, channels, kernel_size, dilation, activation):
+class AMPBlock1(torch.nn.Module):
+    """
+    AMPBlock applies Snake / SnakeBeta activation functions with trainable parameters that control periodicity, defined for each layer.
+    AMPBlock1 has additional self.convs2 that contains additional Conv1d layers with a fixed dilation=1 followed by each layer in self.convs1
+
+    Args:
+        h (AttrDict): Hyperparameters.
+        channels (int): Number of convolution channels.
+        kernel_size (int): Size of the convolution kernel. Default is 3.
+        dilation (tuple): Dilation rates for the convolutions. Each dilation layer has two convolutions. Default is (1, 3, 5).
+        activation (str): Activation function type. Should be either 'snake' or 'snakebeta'. Default is None.
+    """
+
+    def __init__(
+        self,
+        h: AttrDict,
+        channels: int,
+        kernel_size: int = 3,
+        dilation: tuple = (1, 3, 5),
+        activation: str = None,
+    ):
         super().__init__()
+        
         self.h = h
-
-        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
-        if self.h.get("use_cuda_kernel", False):
-            from alias_free_activation.cuda.activation1d import Activation1d as CudaActivation1d
-
-            Activation1d = CudaActivation1d
-        else:
-            Activation1d = TorchActivation1d
-
-        # Activation functions
-        if activation == "snake":
-            self.activation = Activation1d(
-                activation=activations.Snake(channels, alpha_logscale=h.snake_logscale)
-            )
-        elif activation == "snakebeta":
-            self.activation = Activation1d(
-                activation=activations.SnakeBeta(
-                    channels, alpha_logscale=h.snake_logscale
-                )
-            )
-        else:
-            raise NotImplementedError(
-                "activation incorrectly specified. check the config file and look for 'activation'."
-            )
-
-    def forward(self, x):
-        raise NotImplementedError
-
-    def remove_weight_norm(self):
-        raise NotImplementedError
-
-
-class AMPBlock1(AMPBlockBase):
-    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5), activation=None):
-        super().__init__(h, channels, kernel_size, dilation, activation)
 
         self.convs1 = nn.ModuleList(
             [
@@ -75,7 +60,7 @@ class AMPBlock1(AMPBlockBase):
                         channels,
                         channels,
                         kernel_size,
-                        1,
+                        stride=1,
                         dilation=d,
                         padding=get_padding(kernel_size, d),
                     )
@@ -92,23 +77,64 @@ class AMPBlock1(AMPBlockBase):
                         channels,
                         channels,
                         kernel_size,
-                        1,
+                        stride=1,
                         dilation=1,
                         padding=get_padding(kernel_size, 1),
                     )
                 )
-                for _ in range(3)
+                for _ in range(len(dilation))
             ]
         )
         self.convs2.apply(init_weights)
 
-        self.num_layers = len(self.convs1) + len(self.convs2)
+        self.num_layers = len(self.convs1) + len(
+            self.convs2
+        )  # Total number of conv layers
+
+        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
+        if self.h.get("use_cuda_kernel", False):
+            from alias_free_activation.cuda.activation1d import (
+                Activation1d as CudaActivation1d,
+            )
+
+            Activation1d = CudaActivation1d
+        else:
+            Activation1d = TorchActivation1d
+
+        # Activation functions
+        if activation == "snake":
+            self.activations = nn.ModuleList(
+                [
+                    Activation1d(
+                        activation=activations.Snake(
+                            channels, alpha_logscale=h.snake_logscale
+                        )
+                    )
+                    for _ in range(self.num_layers)
+                ]
+            )
+        elif activation == "snakebeta":
+            self.activations = nn.ModuleList(
+                [
+                    Activation1d(
+                        activation=activations.SnakeBeta(
+                            channels, alpha_logscale=h.snake_logscale
+                        )
+                    )
+                    for _ in range(self.num_layers)
+                ]
+            )
+        else:
+            raise NotImplementedError(
+                "activation incorrectly specified. check the config file and look for 'activation'."
+            )
 
     def forward(self, x):
-        for c1, c2 in zip(self.convs1, self.convs2):
-            xt = self.activation(x)
+        acts1, acts2 = self.activations[::2], self.activations[1::2]
+        for c1, c2, a1, a2 in zip(self.convs1, self.convs2, acts1, acts2):
+            xt = a1(x)
             xt = c1(xt)
-            xt = self.activation(xt)
+            xt = a2(xt)
             xt = c2(xt)
             x = xt + x
 
@@ -121,9 +147,30 @@ class AMPBlock1(AMPBlockBase):
             remove_weight_norm(l)
 
 
-class AMPBlock2(AMPBlockBase):
-    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3), activation=None):
-        super().__init__(h, channels, kernel_size, dilation, activation)
+class AMPBlock2(torch.nn.Module):
+    """
+    AMPBlock applies Snake / SnakeBeta activation functions with trainable parameters that control periodicity, defined for each layer.
+    Unlike AMPBlock1, AMPBlock2 does not contain extra Conv1d layers with fixed dilation=1
+
+    Args:
+        h (AttrDict): Hyperparameters.
+        channels (int): Number of convolution channels.
+        kernel_size (int): Size of the convolution kernel. Default is 3.
+        dilation (tuple): Dilation rates for the convolutions. Each dilation layer has two convolutions. Default is (1, 3, 5).
+        activation (str): Activation function type. Should be either 'snake' or 'snakebeta'. Default is None.
+    """
+
+    def __init__(
+        self,
+        h: AttrDict,
+        channels: int,
+        kernel_size: int = 3,
+        dilation: tuple = (1, 3, 5),
+        activation: str = None,
+    ):
+        super().__init__()
+        
+        self.h = h
 
         self.convs = nn.ModuleList(
             [
@@ -132,7 +179,7 @@ class AMPBlock2(AMPBlockBase):
                         channels,
                         channels,
                         kernel_size,
-                        1,
+                        stride=1,
                         dilation=d,
                         padding=get_padding(kernel_size, d),
                     )
@@ -142,15 +189,51 @@ class AMPBlock2(AMPBlockBase):
         )
         self.convs.apply(init_weights)
 
-        self.num_layers = len(self.convs)
+        self.num_layers = len(self.convs)  # Total number of conv layers
+
+        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
+        if self.h.get("use_cuda_kernel", False):
+            from alias_free_activation.cuda.activation1d import (
+                Activation1d as CudaActivation1d,
+            )
+
+            Activation1d = CudaActivation1d
+        else:
+            Activation1d = TorchActivation1d
+
+        # Activation functions
+        if activation == "snake":
+            self.activations = nn.ModuleList(
+                [
+                    Activation1d(
+                        activation=activations.Snake(
+                            channels, alpha_logscale=h.snake_logscale
+                        )
+                    )
+                    for _ in range(self.num_layers)
+                ]
+            )
+        elif activation == "snakebeta":
+            self.activations = nn.ModuleList(
+                [
+                    Activation1d(
+                        activation=activations.SnakeBeta(
+                            channels, alpha_logscale=h.snake_logscale
+                        )
+                    )
+                    for _ in range(self.num_layers)
+                ]
+            )
+        else:
+            raise NotImplementedError(
+                "activation incorrectly specified. check the config file and look for 'activation'."
+            )
 
     def forward(self, x):
-        for c in self.convs:
-            xt = self.activation(x)
+        for c, a in zip(self.convs, self.activations):
+            xt = a(x)
             xt = c(xt)
             x = xt + x
-
-        return x
 
     def remove_weight_norm(self):
         for l in self.convs:
@@ -168,16 +251,32 @@ class BigVGAN(
     tags=["neural-vocoder", "audio-generation", "arxiv:2206.04658"],
 ):
     """
-    This is our main BigVGAN model. Applies anti-aliased periodic activation for resblocks.
-    New in v2: if use_cuda_kernel is set to True, it loads optimized CUDA kernels for AMP.
+    BigVGAN is a neural vocoder model that applies anti-aliased periodic activation for residual blocks (resblocks).
+    New in BigVGAN-v2: it can optionally use optimized CUDA kernels for AMP (anti-aliased multi-periodicity) blocks.
 
-    NOTE: use_cuda_kernel=True should be used for inference only (training is not supported).
+    Args:
+        h (AttrDict): Hyperparameters.
+        use_cuda_kernel (bool): If set to True, loads optimized CUDA kernels for AMP. This should be used for inference only, as training is not supported with CUDA kernels.
+
+    Note:
+        - The `use_cuda_kernel` parameter should be used for inference only, as training with CUDA kernels is not supported.
+        - Ensure that the activation function is correctly specified in the hyperparameters (h.activation).
     """
 
-    def __init__(self, h, use_cuda_kernel: bool = False):
+    def __init__(self, h: AttrDict, use_cuda_kernel: bool = False):
         super().__init__()
         self.h = h
         self.h["use_cuda_kernel"] = use_cuda_kernel
+
+        # Select which Activation1d, lazy-load cuda version to ensure backward compatibility
+        if self.h.get("use_cuda_kernel", False):
+            from alias_free_activation.cuda.activation1d import (
+                Activation1d as CudaActivation1d,
+            )
+
+            Activation1d = CudaActivation1d
+        else:
+            Activation1d = TorchActivation1d
 
         self.num_kernels = len(h.resblock_kernel_sizes)
         self.num_upsamples = len(h.upsample_rates)
@@ -188,7 +287,14 @@ class BigVGAN(
         )
 
         # Define which AMPBlock to use. BigVGAN uses AMPBlock1 as default
-        resblock_class = AMPBlock1 if h.resblock == "1" else AMPBlock2
+        if h.resblock == "1":
+            resblock_class = AMPBlock1
+        elif h.resblock == "2":
+            resblock_class = AMPBlock2
+        else:
+            raise ValueError(
+                f"Incorrect resblock class specified in hyperparameters. Got {h.resblock}"
+            )
 
         # Transposed conv-based upsamplers. does not apply anti-aliasing
         self.ups = nn.ModuleList()

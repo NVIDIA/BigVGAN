@@ -6,7 +6,7 @@ import torch.nn as nn
 from alias_free_activation.torch.resample import UpSample1d, DownSample1d
 
 # load fused CUDA kernel: this enables importing anti_alias_activation_cuda
-from cuda import load
+from alias_free_activation.cuda import load
 
 load.load()
 
@@ -18,7 +18,7 @@ class FusedAntiAliasActivation(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, inputs, ftr, alpha, beta):
-        from load import anti_alias_activation_cuda
+        import anti_alias_activation_cuda
 
         activation_results = anti_alias_activation_cuda.forward(
             inputs, ftr, alpha, beta
