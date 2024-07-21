@@ -1,4 +1,4 @@
-# Copyright (c) 2024 NVIDIA CORPORATION. 
+# Copyright (c) 2024 NVIDIA CORPORATION.
 #   Licensed under the MIT license.
 
 # Adapted from https://github.com/jik876/hifi-gan under the MIT license.
@@ -63,16 +63,16 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
         match_stride: bool = False,
         mel_fmin: List[float] = [0, 0, 0, 0, 0, 0, 0],
         mel_fmax: List[float] = [None, None, None, None, None, None, None],
-        window_type: str = 'hann',
+        window_type: str = "hann",
     ):
         super().__init__()
         self.sampling_rate = sampling_rate
-        
+
         STFTParams = namedtuple(
             "STFTParams",
             ["window_length", "hop_length", "window_type", "match_stride"],
         )
-        
+
         self.stft_params = [
             STFTParams(
                 window_length=w,
@@ -91,28 +91,37 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
         self.mel_fmin = mel_fmin
         self.mel_fmax = mel_fmax
         self.pow = pow
-        
+
     @staticmethod
     @functools.lru_cache(None)
     def get_window(
-        window_type,window_length, 
+        window_type,
+        window_length,
     ):
         return signal.get_window(window_type, window_length)
-    
+
     @staticmethod
     @functools.lru_cache(None)
-    def get_mel_filters(
-        sr, n_fft, n_mels, fmin, fmax
-    ):
+    def get_mel_filters(sr, n_fft, n_mels, fmin, fmax):
         return librosa_mel_fn(sr=sr, n_fft=n_fft, n_mels=n_mels, fmin=fmin, fmax=fmax)
-        
+
     def mel_spectrogram(
-        self, wav, n_mels, fmin, fmax, window_length, hop_length, match_stride, window_type
+        self,
+        wav,
+        n_mels,
+        fmin,
+        fmax,
+        window_length,
+        hop_length,
+        match_stride,
+        window_type,
     ):
-        # mirrors AudioSignal.mel_spectrogram used by BigVGAN-v2 training from:
-        # https://github.com/descriptinc/audiotools/blob/master/audiotools/core/audio_signal.py
+        """
+        Mirrors AudioSignal.mel_spectrogram used by BigVGAN-v2 training from: 
+        https://github.com/descriptinc/audiotools/blob/master/audiotools/core/audio_signal.py
+        """
         B, C, T = wav.shape
-        
+
         if match_stride:
             assert (
                 hop_length == window_length // 4
@@ -122,14 +131,12 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
         else:
             right_pad = 0
             pad = 0
-            
-        wav = torch.nn.functional.pad(
-            wav, (pad, pad + right_pad), mode='reflect'
-        )
-        
+
+        wav = torch.nn.functional.pad(wav, (pad, pad + right_pad), mode="reflect")
+
         window = self.get_window(window_type, window_length)
         window = torch.from_numpy(window).to(wav.device).float()
-        
+
         stft = torch.stft(
             wav.reshape(-1, T),
             n_fft=window_length,
@@ -141,24 +148,23 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
         _, nf, nt = stft.shape
         stft = stft.reshape(B, C, nf, nt)
         if match_stride:
-            # Drop first two and last two frames, which are added
-            # because of padding. Now num_frames * hop_length = num_samples.
+            """
+            Drop first two and last two frames, which are added, because of padding. Now num_frames * hop_length = num_samples.
+            """
             stft = stft[..., 2:-2]
         magnitude = torch.abs(stft)
-        
+
         nf = magnitude.shape[2]
-        mel_basis = self.get_mel_filters(self.sampling_rate, 2 * (nf - 1), n_mels, fmin, fmax)
+        mel_basis = self.get_mel_filters(
+            self.sampling_rate, 2 * (nf - 1), n_mels, fmin, fmax
+        )
         mel_basis = torch.from_numpy(mel_basis).to(wav.device)
         mel_spectrogram = magnitude.transpose(2, -1) @ mel_basis.T
         mel_spectrogram = mel_spectrogram.transpose(-1, 2)
-        
+
         return mel_spectrogram
-    
-    def forward(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor
-    ) -> torch.Tensor:
+
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """Computes mel loss between an estimate and a reference
         signal.
 
@@ -174,7 +180,7 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
         torch.Tensor
             Mel loss.
         """
-        
+
         loss = 0.0
         for n_mels, fmin, fmax, s in zip(
             self.n_mels, self.mel_fmin, self.mel_fmax, self.stft_params
@@ -191,19 +197,22 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
 
             x_mels = self.mel_spectrogram(x, **kwargs)
             y_mels = self.mel_spectrogram(y, **kwargs)
-            x_logmels = torch.log(x_mels.clamp(min=self.clamp_eps).pow(self.pow)) / torch.log(torch.tensor(10.0))
-            y_logmels = torch.log(y_mels.clamp(min=self.clamp_eps).pow(self.pow)) / torch.log(torch.tensor(10.0))
-            
+            x_logmels = torch.log(
+                x_mels.clamp(min=self.clamp_eps).pow(self.pow)
+            ) / torch.log(torch.tensor(10.0))
+            y_logmels = torch.log(
+                y_mels.clamp(min=self.clamp_eps).pow(self.pow)
+            ) / torch.log(torch.tensor(10.0))
+
             loss += self.log_weight * self.loss_fn(x_logmels, y_logmels)
             loss += self.mag_weight * self.loss_fn(x_logmels, y_logmels)
-            
+
         return loss
 
 
-# loss functions
+# Loss functions
 def feature_loss(
-    fmap_r: List[List[torch.Tensor]],
-    fmap_g: List[List[torch.Tensor]]
+    fmap_r: List[List[torch.Tensor]], fmap_g: List[List[torch.Tensor]]
 ) -> torch.Tensor:
 
     loss = 0
@@ -211,33 +220,34 @@ def feature_loss(
         for rl, gl in zip(dr, dg):
             loss += torch.mean(torch.abs(rl - gl))
 
-    return loss*2 # this equates to lambda=2.0 for the feature matching loss
+    return loss * 2  # This equates to lambda=2.0 for the feature matching loss
+
 
 def discriminator_loss(
-    disc_real_outputs: List[torch.Tensor],
-    disc_generated_outputs: List[torch.Tensor]
+    disc_real_outputs: List[torch.Tensor], disc_generated_outputs: List[torch.Tensor]
 ) -> Tuple[torch.Tensor, List[torch.Tensor], List[torch.Tensor]]:
 
     loss = 0
     r_losses = []
     g_losses = []
     for dr, dg in zip(disc_real_outputs, disc_generated_outputs):
-        r_loss = torch.mean((1-dr)**2)
+        r_loss = torch.mean((1 - dr) ** 2)
         g_loss = torch.mean(dg**2)
-        loss += (r_loss + g_loss)
+        loss += r_loss + g_loss
         r_losses.append(r_loss.item())
         g_losses.append(g_loss.item())
 
     return loss, r_losses, g_losses
 
+
 def generator_loss(
-    disc_outputs: List[torch.Tensor]
+    disc_outputs: List[torch.Tensor],
 ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
-    
+
     loss = 0
     gen_losses = []
     for dg in disc_outputs:
-        l = torch.mean((1-dg)**2)
+        l = torch.mean((1 - dg) ** 2)
         gen_losses.append(l)
         loss += l
 
