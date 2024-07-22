@@ -225,7 +225,7 @@ Below are the objective results of the 24kHz model (`bigvgan_v2_24khz_100band_25
 
 ## Speed Benchmark
 
-Below are the speed and VRAM usage benchmark of BigVGAN from `tests/test_cuda_vs_torch_model.py`, using `bigvgan_v2_24khz_100band_256x` as a reference model.
+Below are the speed and VRAM usage benchmark results of BigVGAN from `tests/test_cuda_vs_torch_model.py`, using `bigvgan_v2_24khz_100band_256x` as a reference model.
 
 | GPU                        | num_mel_frame | use_cuda_kernel | Speed (kHz) | Real-time Factor | VRAM (GB) |
 |:--------------------------:|:-------------:|:---------------:|:-----------:|:----------------:|:---------:|
