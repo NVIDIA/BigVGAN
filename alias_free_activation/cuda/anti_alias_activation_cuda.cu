@@ -30,6 +30,16 @@
 
 namespace
 {
+    // Hard-coded hyperparameters
+    // WARP_SIZE and WARP_BATCH must match the return values batches_per_warp and
+    constexpr int ELEMENTS_PER_LDG_STG = 1; //(WARP_ITERATIONS < 4) ? 1 : 4;
+    constexpr int BUFFER_SIZE = 32;
+    constexpr int FILTER_SIZE = 12;
+    constexpr int HALF_FILTER_SIZE = 6;
+    constexpr int UPSAMPLE_REPLICATION_PAD = 5; // 5 on each side, matching torch impl
+    constexpr int DOWNSAMPLE_REPLICATION_PAD_LEFT = 5; // matching torch impl
+    constexpr int DOWNSAMPLE_REPLICATION_PAD_RIGHT = 6; // matching torch impl
+
     template <typename input_t, typename output_t, typename acc_t>
     __global__ void anti_alias_activation_forward(
         output_t *dst,
@@ -42,14 +52,16 @@ namespace
         int channels,
         int seq_len)
     {
-        // WARP_SIZE and WARP_BATCH must match the return values batches_per_warp and
-        constexpr int ELEMENTS_PER_LDG_STG = 1; //(WARP_ITERATIONS < 4) ? 1 : 4;
-        constexpr int BUFFER_SIZE = 32;
-        constexpr int FILTER_SIZE = 12;
-        constexpr int HALF_FILTER_SIZE = 6;
-        constexpr int UPSAMPLE_REPLICATION_PAD = 5; // 5 on each side, matching torch impl
-        constexpr int DOWNSAMPLE_REPLICATION_PAD_LEFT = 5; // matching torch impl
-        constexpr int DOWNSAMPLE_REPLICATION_PAD_RIGHT = 6; // matching torch impl
+        // Up and downsample filters
+        input_t up_filter[FILTER_SIZE];
+        input_t down_filter[FILTER_SIZE];
+
+        // Load data from global memory including extra indices reserved for replication paddings
+        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE + 2 * UPSAMPLE_REPLICATION_PAD] = {0};
+        input_t intermediates[2 * FILTER_SIZE + 2 * BUFFER_SIZE + DOWNSAMPLE_REPLICATION_PAD_LEFT + DOWNSAMPLE_REPLICATION_PAD_RIGHT] = {0};
+
+        // Output stores downsampled output before writing to dst
+        output_t output[BUFFER_SIZE];
 
         // blockDim/threadIdx = (128, 1, 1)
         // gridDim/blockIdx = (seq_blocks, channels, batches)
@@ -57,8 +69,7 @@ namespace
         int local_offset = threadIdx.x * BUFFER_SIZE;
         int seq_offset = blockIdx.x * 128 * BUFFER_SIZE + local_offset;
 
-        int intermediate_seq_len = seq_len * 2; // intermediate have double the seq_len
-        int intermediate_block_offset = (blockIdx.x * 128 * BUFFER_SIZE * 2 + intermediate_seq_len * (blockIdx.y + gridDim.y * blockIdx.z));
+        // intermediate have double the seq_len
         int intermediate_local_offset = threadIdx.x * BUFFER_SIZE * 2;
         int intermediate_seq_offset = blockIdx.x * 128 * BUFFER_SIZE * 2 + intermediate_local_offset;
 
@@ -76,17 +87,6 @@ namespace
         input_t alpha_val = expf(alpha[0]);
         beta = beta + blockIdx.y;
         input_t beta_val = expf(beta[0]);
-
-        // Load data from global memory including extra indices reserved for replication paddings
-        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE + 2 * UPSAMPLE_REPLICATION_PAD] = {0};
-        input_t intermediates[2 * FILTER_SIZE + 2 * BUFFER_SIZE + DOWNSAMPLE_REPLICATION_PAD_LEFT + DOWNSAMPLE_REPLICATION_PAD_RIGHT] = {0};
-
-        // Output stores downsampled output before writing to dst
-        output_t output[BUFFER_SIZE];
-
-        // Up and downsample filters
-        input_t up_filter[FILTER_SIZE];
-        input_t down_filter[FILTER_SIZE];
 
         #pragma unroll
         for (int it = 0; it < FILTER_SIZE; it += 1)

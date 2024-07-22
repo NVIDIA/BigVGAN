@@ -10,9 +10,8 @@
 
 ## News
 - **Jul 2024 (v2.3):**
-  - General refactor and code improvements for improved readability
-  - Fully fused CUDA kernel of anti-alised activation (upsampling + activation + downsampling)
-  - Inference speed benchmark
+  - General refactor and code improvements for improved readability.
+  - Fully fused CUDA kernel of anti-alised activation (upsampling + activation + downsampling) with inference speed benchmark.
 
 - **Jul 2024 (v2.2):** The repository now includes an interactive local demo using gradio.
 
@@ -149,7 +148,7 @@ generator = BigVGAN(h, use_cuda_kernel=True)
 
 You can also pass `--use_cuda_kernel` to `inference.py` and `inference_e2e.py` to enable this feature.
 
-When applied for the first time, it builds the kernel using `nvcc` and `ninja`. If the build succeeds, the kernel is saved to `alias/cuda/build` and the model automatically loads the kernel. The codebase has been tested using CUDA `12.1`.
+When applied for the first time, it builds the kernel using `nvcc` and `ninja`. If the build succeeds, the kernel is saved to `alias_free_activation/cuda/build` and the model automatically loads the kernel. The codebase has been tested using CUDA `12.1`.
 
 Please make sure that both are installed in your system and `nvcc` installed in your system matches the version your PyTorch build is using.
 
@@ -165,7 +164,7 @@ loading plain Pytorch BigVGAN
 ...
 loading CUDA kernel BigVGAN with auto-build
 Detected CUDA files, patching ldflags
-Emitting ninja build file /path/to/your/BigVGAN/alias_free_cuda/build/build.ninja...
+Emitting ninja build file /path/to/your/BigVGAN/alias_free_activation/cuda/build/build.ninja..
 Building extension module anti_alias_activation_cuda...
 ...
 Loading extension module anti_alias_activation_cuda...

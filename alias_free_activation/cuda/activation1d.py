@@ -23,7 +23,7 @@ class FusedAntiAliasActivation(torch.autograd.Function):
         activation_results = anti_alias_activation_cuda.forward(
             inputs, up_ftr, down_ftr, alpha, beta
         )
-        
+
         return activation_results
 
     @staticmethod
@@ -70,6 +70,8 @@ class Activation1d(nn.Module):
             ):  # Exp baked into cuda kernel, cancel it out with a log
                 alpha = torch.log(alpha)
                 beta = torch.log(beta)
-                
-            x = FusedAntiAliasActivation.apply(x, self.upsample.filter, self.downsample.lowpass.filter, alpha, beta)
+
+            x = FusedAntiAliasActivation.apply(
+                x, self.upsample.filter, self.downsample.lowpass.filter, alpha, beta
+            )
             return x
