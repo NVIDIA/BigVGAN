@@ -30,78 +30,12 @@
 
 namespace
 {
-
-    /*
-template <typename Datatype, int ELEMENTS_PER_LDG>
-__device__ __inline__ void copy_vector(Datatype *dst, const Datatype *src);
-
-template <>
-__device__ __inline__ void copy_vector<c10::BFloat16, 1>(c10::BFloat16 *dst, const c10::BFloat16 *src) { *dst = *src; }
-
-template <>
-__device__ __inline__ void copy_vector<c10::BFloat16, 4>(c10::BFloat16 *dst, const c10::BFloat16 *src) { *((float2*) dst) = *((float2*) src); }
-
-template <>
-__device__ __inline__ void copy_vector<c10::Half, 1>(c10::Half *dst, const c10::Half *src) { *dst = *src; }
-
-template <>
-__device__ __inline__ void copy_vector<c10::Half, 4>(c10::Half *dst, const c10::Half *src) { *((float2*) dst) = *((float2*) src); }
-
-template <>
-__device__ __inline__ void copy_vector<uint8_t, 1>(uint8_t *dst, const uint8_t *src) { *dst = *src; }
-
-template <>
-__device__ __inline__ void copy_vector<uint8_t, 4>(uint8_t *dst, const uint8_t *src) {*((half2*) dst) = *((half2*) src); }
-
-int log2_ceil(int value) {
-    int log2_value = 0;
-    while ((1 << log2_value) < value) ++log2_value;
-    return log2_value;
-}
-
-template<typename T>
-struct Add {
-  __device__ __forceinline__ T operator()(T a, T b) const {
-    return a + b;
-  }
-};
-
-template<typename T>
-struct Max {
-  __device__ __forceinline__ T operator()(T a, T b) const {
-    return a < b ? b : a;
-  }
-};
-
-template <typename T>
-__device__ __forceinline__ T WARP_SHFL_XOR_NATIVE(T value, int laneMask, int width = warpSize, unsigned int mask = 0xffffffff)
-{
-#if CUDA_VERSION >= 9000
-    return __shfl_xor_sync(mask, value, laneMask, width);
-#else
-    return __shfl_xor(value, laneMask, width);
-#endif
-}
-
-template <typename acc_t, int WARP_BATCH, int WARP_SIZE, template<typename> class ReduceOp>
-__device__ __forceinline__ void warp_reduce(acc_t* sum) {
-    ReduceOp<acc_t> r;
-    #pragma unroll
-    for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2) {
-        #pragma unroll
-        for (int i = 0;  i < WARP_BATCH;  ++i) {
-            acc_t b = WARP_SHFL_XOR_NATIVE(sum[i], offset, WARP_SIZE);
-            sum[i] = r(sum[i], b);
-        }
-    }
-}
-*/
-
     template <typename input_t, typename output_t, typename acc_t>
     __global__ void anti_alias_activation_forward(
         output_t *dst,
         const input_t *src,
-        const input_t *ftr,
+        const input_t *up_ftr,
+        const input_t *down_ftr,
         const input_t *alpha,
         const input_t *beta,
         int batch_size,
@@ -113,7 +47,9 @@ __device__ __forceinline__ void warp_reduce(acc_t* sum) {
         constexpr int BUFFER_SIZE = 32;
         constexpr int FILTER_SIZE = 12;
         constexpr int HALF_FILTER_SIZE = 6;
-        constexpr int REPLICATION_PAD = 5; // 5 on each side
+        constexpr int UPSAMPLE_REPLICATION_PAD = 5; // 5 on each side, matching torch impl
+        constexpr int DOWNSAMPLE_REPLICATION_PAD_LEFT = 5; // matching torch impl
+        constexpr int DOWNSAMPLE_REPLICATION_PAD_RIGHT = 6; // matching torch impl
 
         // blockDim/threadIdx = (128, 1, 1)
         // gridDim/blockIdx = (seq_blocks, channels, batches)
@@ -121,48 +57,54 @@ __device__ __forceinline__ void warp_reduce(acc_t* sum) {
         int local_offset = threadIdx.x * BUFFER_SIZE;
         int seq_offset = blockIdx.x * 128 * BUFFER_SIZE + local_offset;
 
-        // int intermediate_seq_len = seq_len * 2 - 1 + 4 * REPLICATION_PAD;
-        // int intermediate_block_offset = (blockIdx.x * 128 * BUFFER_SIZE * 2 + intermediate_seq_len * (blockIdx.y + gridDim.y * blockIdx.z));
-        // int intermediate_local_offset = threadIdx.x * BUFFER_SIZE * 2;
+        int intermediate_seq_len = seq_len * 2; // intermediate have double the seq_len
+        int intermediate_block_offset = (blockIdx.x * 128 * BUFFER_SIZE * 2 + intermediate_seq_len * (blockIdx.y + gridDim.y * blockIdx.z));
+        int intermediate_local_offset = threadIdx.x * BUFFER_SIZE * 2;
+        int intermediate_seq_offset = blockIdx.x * 128 * BUFFER_SIZE * 2 + intermediate_local_offset;
 
-        int output_seq_len = seq_len * 2; //
-        int output_block_offset = (blockIdx.x * 128 * BUFFER_SIZE * 2 + output_seq_len * (blockIdx.y + gridDim.y * blockIdx.z));
-        int output_local_offset = threadIdx.x * BUFFER_SIZE * 2;
-        int output_seq_offset = blockIdx.x * 128 * BUFFER_SIZE * 2 + output_local_offset;
-        // get values needed for replication padding before moving pointer
+        // Get values needed for replication padding before moving pointer
         const input_t *right_most_pntr = src + (seq_len * (blockIdx.y + gridDim.y * blockIdx.z));
         input_t seq_left_most_value = right_most_pntr[0];
         input_t seq_right_most_value = right_most_pntr[seq_len - 1];
 
+        // Move src and dst pointers
         src += block_offset + local_offset;
-        dst += output_block_offset + output_local_offset;
+        dst += block_offset + local_offset;
+
+        // Alpha and beta values for snake activatons. Applies exp by default
         alpha = alpha + blockIdx.y;
         input_t alpha_val = expf(alpha[0]);
         beta = beta + blockIdx.y;
         input_t beta_val = expf(beta[0]);
-        // load data from global memory
-        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE] = {0};
-        input_t intermediates[2 * FILTER_SIZE + 2 * BUFFER_SIZE] = {0};
-        // output_t output[2*BUFFER_SIZE];
-        input_t filter[FILTER_SIZE];
-        // input_t temp_data[ELEMENTS_PER_LDG_STG];
-        // uint8_t temp_mask[ELEMENTS_PER_LDG_STG];
 
-#pragma unroll
+        // Load data from global memory including extra indices reserved for replication paddings
+        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE + 2 * UPSAMPLE_REPLICATION_PAD] = {0};
+        input_t intermediates[2 * FILTER_SIZE + 2 * BUFFER_SIZE + DOWNSAMPLE_REPLICATION_PAD_LEFT + DOWNSAMPLE_REPLICATION_PAD_RIGHT] = {0};
+
+        // Output stores downsampled output before writing to dst
+        output_t output[BUFFER_SIZE];
+
+        // Up and downsample filters
+        input_t up_filter[FILTER_SIZE];
+        input_t down_filter[FILTER_SIZE];
+
+        #pragma unroll
         for (int it = 0; it < FILTER_SIZE; it += 1)
         {
-            filter[it] = ftr[it];
+            up_filter[it] = up_ftr[it];
+            down_filter[it] = down_ftr[it];
         }
 
-#pragma unroll
+        // Apply replication padding for upsampling, matching torch impl
+        #pragma unroll
         for (int it = -HALF_FILTER_SIZE; it < BUFFER_SIZE + HALF_FILTER_SIZE; it += 1)
         {
-            int element_index = seq_offset + it;
-            if ((element_index < 0) && (element_index >= -REPLICATION_PAD))
+            int element_index = seq_offset + it; // index for element
+            if ((element_index < 0) && (element_index >= -UPSAMPLE_REPLICATION_PAD))
             {
                 elements[2 * (HALF_FILTER_SIZE + it)] = 2 * seq_left_most_value;
             }
-            if ((element_index >= seq_len) && (element_index < seq_len + REPLICATION_PAD))
+            if ((element_index >= seq_len) && (element_index < seq_len + UPSAMPLE_REPLICATION_PAD))
             {
                 elements[2 * (HALF_FILTER_SIZE + it)] = 2 * seq_right_most_value;
             }
@@ -172,86 +114,76 @@ __device__ __forceinline__ void warp_reduce(acc_t* sum) {
             }
         }
 
-// apply filter
-#pragma unroll
+        // Apply upsampling strided convolution and write to intermediates. It reserves DOWNSAMPLE_REPLICATION_PAD_LEFT for replication padding of the downsampilng conv later
+        #pragma unroll
         for (int it = 0; it < (2 * BUFFER_SIZE + 2 * FILTER_SIZE); it += 1)
         {
             input_t acc = 0.0;
-
-            int element_index = output_seq_offset + it; // index for output
-#pragma unroll
+            int element_index = intermediate_seq_offset + it; // index for intermediate
+            #pragma unroll
             for (int f_idx = 0; f_idx < FILTER_SIZE; f_idx += 1)
             {
                 if ((element_index + f_idx) >= 0)
                 {
-                    acc += filter[f_idx] * elements[it + f_idx];
+                    acc += up_filter[f_idx] * elements[it + f_idx];
                 }
             }
-            intermediates[it] = acc;
+            intermediates[it + DOWNSAMPLE_REPLICATION_PAD_LEFT] = acc;
         }
 
+        // Apply activation function. It reserves DOWNSAMPLE_REPLICATION_PAD_LEFT and DOWNSAMPLE_REPLICATION_PAD_RIGHT for replication padding of the downsampilng conv later
         double no_div_by_zero = 0.000000001;
-#pragma unroll
-        for (int it = 0; it < 12 + 2 * BUFFER_SIZE; it++)
+        #pragma unroll
+        for (int it = 0; it < 2 * BUFFER_SIZE + 2 * FILTER_SIZE; it += 1)
         {
-            intermediates[it] += (1.0 / (beta_val + no_div_by_zero)) * sinf(intermediates[it] * alpha_val) * sinf(intermediates[it] * alpha_val);
+            intermediates[it + DOWNSAMPLE_REPLICATION_PAD_LEFT] += (1.0 / (beta_val + no_div_by_zero)) * sinf(intermediates[it + DOWNSAMPLE_REPLICATION_PAD_LEFT] * alpha_val) * sinf(intermediates[it + DOWNSAMPLE_REPLICATION_PAD_LEFT] * alpha_val);
         }
 
-// now copy to output
-#pragma unroll
-        for (int it = 0; it < 2 * BUFFER_SIZE; it += 1)
+        // Apply replication padding before downsampling conv from intermediates
+        #pragma unroll
+        for (int it = 0; it < DOWNSAMPLE_REPLICATION_PAD_LEFT; it += 1)
         {
-            int element_index = output_seq_offset + it;
-            if (element_index < output_seq_len)
+            intermediates[it] = intermediates[DOWNSAMPLE_REPLICATION_PAD_LEFT];
+        }
+        #pragma unroll
+        for (int it = DOWNSAMPLE_REPLICATION_PAD_LEFT + 2 * BUFFER_SIZE + 2 * FILTER_SIZE; it < DOWNSAMPLE_REPLICATION_PAD_LEFT + 2 * BUFFER_SIZE + 2 * FILTER_SIZE + DOWNSAMPLE_REPLICATION_PAD_RIGHT; it += 1)
+        {
+            intermediates[it] = intermediates[DOWNSAMPLE_REPLICATION_PAD_LEFT + 2 * BUFFER_SIZE + 2 * FILTER_SIZE - 1];
+        }
+
+        // Apply downsample strided convolution (assuming stride=2) from intermediates
+        #pragma unroll
+        for (int it = 0; it < BUFFER_SIZE; it += 1)
+        {
+            input_t acc = 0.0;
+            #pragma unroll
+            for (int f_idx = 0; f_idx < FILTER_SIZE; f_idx += 1)
             {
-                dst[it] = intermediates[it + 6];
+                // Add constant DOWNSAMPLE_REPLICATION_PAD_RIGHT to match torch implementation
+                acc += down_filter[f_idx] * intermediates[it * 2 + f_idx + DOWNSAMPLE_REPLICATION_PAD_RIGHT];
+            }
+            output[it] = acc;
+        }
+
+        // Write output to dst
+        #pragma unroll
+        for (int it = 0;  it < BUFFER_SIZE;  it += ELEMENTS_PER_LDG_STG)
+        {
+            int element_index = seq_offset + it;
+            if (element_index < seq_len)
+            {
+                dst[it] = output[it];
             }
         }
 
-        // for (int it = 0;  it < BUFFER_SIZE;  it+=ELEMENTS_PER_LDG_STG) {
-        //     int element_index = seq_offset + it;
-        //     if (element_index < seq_len) {
-        //         dst[it] = output[it];
-        //     }
-        // }
-
-        // // Upsample convolution
-        // for (int it = 0;  it < 2 * BUFFER_SIZE + 12;  it+=1) {
-        //     input_t acc = 0.0;
-
-        //     for (int f_idx = 0; f_idx < FILTER_SIZE; f_idx+=1){
-        //         acc += filter[f_idx] * elements[it+f_idx];
-        //     }
-        //     intermediates[it] = acc;
-        // }
-
-        // // correct the corners of intermediates
-        // if (seq_offset == 0) {
-        //     for (int it = 0; it < 6; it+=1)
-        //         intermediates[it] = 0;
-        // }
-
-        // if (seq_offset + 32 >= seq_len) {
-        //     int offset = seq_len % 32 == 0 ? 32 : seq_len % 32;
-
-        //     for (int it = 0; it < 6; it++) {
-        //         intermediates[6+2*offset+it] = 0;
-        //     }
-        // }
-
-        // for (int it = 0;  it < BUFFER_SIZE;  it+=ELEMENTS_PER_LDG_STG) {
-        //     int element_index = seq_offset + it;
-        //     if (element_index < seq_len) {
-        //         dst[it] = output[it];
-        //     }
-        // }
     }
 
     template <typename input_t, typename output_t, typename acc_t>
     void dispatch_anti_alias_activation_forward(
         output_t *dst,
         const input_t *src,
-        const input_t *ftr,
+        const input_t *up_ftr,
+        const input_t *down_ftr,
         const input_t *alpha,
         const input_t *beta,
         int batch_size,
@@ -264,7 +196,7 @@ __device__ __forceinline__ void warp_reduce(acc_t* sum) {
         }
         else
         {
-            // use 128 threads per block to maximimize gpu utilization
+            // Use 128 threads per block to maximimize gpu utilization
             constexpr int threads_per_block = 128;
             constexpr int seq_len_per_block = 4096;
             int blocks_per_seq_len = (seq_len + seq_len_per_block - 1) / seq_len_per_block;
@@ -272,47 +204,43 @@ __device__ __forceinline__ void warp_reduce(acc_t* sum) {
             dim3 threads(threads_per_block, 1, 1);
 
             anti_alias_activation_forward<input_t, output_t, acc_t>
-                <<<blocks, threads, 0, at::cuda::getCurrentCUDAStream()>>>(dst, src, ftr, alpha, beta, batch_size, channels, seq_len);
+                <<<blocks, threads, 0, at::cuda::getCurrentCUDAStream()>>>(dst, src, up_ftr, down_ftr, alpha, beta, batch_size, channels, seq_len);
         }
     }
 }
 
-namespace anti_alias_activation
+extern "C" torch::Tensor fwd_cuda(torch::Tensor const &input, torch::Tensor const &up_filter, torch::Tensor const &down_filter, torch::Tensor const &alpha, torch::Tensor const &beta)
 {
+    // Input is a 3d tensor with dimensions [batches, channels, seq_len]
+    const int batches = input.size(0);
+    const int channels = input.size(1);
+    const int seq_len = input.size(2);
 
-    torch::Tensor fwd_cuda(torch::Tensor const &input, torch::Tensor const &filter, torch::Tensor const &alpha, torch::Tensor const &beta)
-    {
-        // input is a 4d tensor with dimensions [batches, attn_heads, seq_len, seq_len]
-        const int batches = input.size(0);
-        const int channels = input.size(1);
-        const int seq_len = input.size(2);
+    // Output
+    auto act_options = input.options().requires_grad(false);
 
-        // Output
-        auto act_options = input.options().requires_grad(false);
-        int output_seq_len = seq_len * 2; // we'll be dilating between each element by interspersing with zeros
+    torch::Tensor anti_alias_activation_results =
+        torch::empty({batches, channels, seq_len}, act_options);
 
-        torch::Tensor anti_alias_activation_results =
-            torch::empty({batches, channels, output_seq_len}, act_options);
+    void *input_ptr = static_cast<void *>(input.data_ptr());
+    void *up_filter_ptr = static_cast<void *>(up_filter.data_ptr());
+    void *down_filter_ptr = static_cast<void *>(down_filter.data_ptr());
+    void *alpha_ptr = static_cast<void *>(alpha.data_ptr());
+    void *beta_ptr = static_cast<void *>(beta.data_ptr());
+    void *anti_alias_activation_results_ptr = static_cast<void *>(anti_alias_activation_results.data_ptr());
 
-        // Softmax Intermediate Result Ptr
-        void *input_ptr = static_cast<void *>(input.data_ptr());
-        void *filter_ptr = static_cast<void *>(filter.data_ptr());
-        void *alpha_ptr = static_cast<void *>(alpha.data_ptr());
-        void *beta_ptr = static_cast<void *>(beta.data_ptr());
-        void *anti_alias_activation_results_ptr = static_cast<void *>(anti_alias_activation_results.data_ptr());
-
-        DISPATCH_FLOAT_HALF_AND_BFLOAT(
-            input.scalar_type(),
-            "dispatch anti alias activation_forward",
-            dispatch_anti_alias_activation_forward<scalar_t, scalar_t, float>(
-                reinterpret_cast<scalar_t *>(anti_alias_activation_results_ptr),
-                reinterpret_cast<const scalar_t *>(input_ptr),
-                reinterpret_cast<const scalar_t *>(filter_ptr),
-                reinterpret_cast<const scalar_t *>(alpha_ptr),
-                reinterpret_cast<const scalar_t *>(beta_ptr),
-                batches,
-                channels,
-                seq_len););
-        return anti_alias_activation_results;
-    }
+    DISPATCH_FLOAT_HALF_AND_BFLOAT(
+        input.scalar_type(),
+        "dispatch anti alias activation_forward",
+        dispatch_anti_alias_activation_forward<scalar_t, scalar_t, float>(
+            reinterpret_cast<scalar_t *>(anti_alias_activation_results_ptr),
+            reinterpret_cast<const scalar_t *>(input_ptr),
+            reinterpret_cast<const scalar_t *>(up_filter_ptr),
+            reinterpret_cast<const scalar_t *>(down_filter_ptr),
+            reinterpret_cast<const scalar_t *>(alpha_ptr),
+            reinterpret_cast<const scalar_t *>(beta_ptr),
+            batches,
+            channels,
+            seq_len););
+    return anti_alias_activation_results;
 }
