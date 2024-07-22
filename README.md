@@ -248,12 +248,6 @@ Below are the speed and VRAM usage benchmark of BigVGAN from `tests/test_cuda_vs
 |                            | 16384         | False           | 589.4       | 24.6x            | 5.0       |
 |                            |               | True            | 1068.1      | 44.5x            | 3.2       |
 
-This format centers the `GPU` and `num_mel_frame` columns for better readability.
-
-This format centers the `GPU` and `num_mel_frame` columns for better readability.
-
-This table now uses `use_cuda_kernel=False` and `use_cuda_kernel=True` to indicate the models.
-
 ## Acknowledgements
 
 We thank Vijay Anand Korthikanti and Kevin J. Shih for their generous support in implementing the CUDA kernel for inference.
