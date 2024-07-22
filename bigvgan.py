@@ -377,7 +377,7 @@ class BigVGAN(
         # Post-conv
         x = self.activation_post(x)
         x = self.conv_post(x)
-        # Pinal tanh activation
+        # Final tanh activation
         if self.use_tanh_at_final:
             x = torch.tanh(x)
         else:

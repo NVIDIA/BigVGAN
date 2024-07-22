@@ -8,26 +8,26 @@ from alias_free_activation.torch.resample import UpSample1d, DownSample1d
 # load fused CUDA kernel: this enables importing anti_alias_activation_cuda
 from alias_free_activation.cuda import load
 
-load.load()
+anti_alias_activation_cuda = load.load()
 
 
 class FusedAntiAliasActivation(torch.autograd.Function):
     """
-    Assumes filter size 12, replication padding on upsampling, and logscale alpha/beta parameters as inputs
+    Assumes filter size 12, replication padding on upsampling/downsampling, and logscale alpha/beta parameters as inputs.
+    The hyperparameters are hard-coded in the kernel to maximize speed.
+    NOTE: The fused kenrel is incorrect for Activation1d with different hyperparameters.
     """
 
     @staticmethod
-    def forward(ctx, inputs, ftr, alpha, beta):
-        import anti_alias_activation_cuda
-
+    def forward(ctx, inputs, up_ftr, down_ftr, alpha, beta):
         activation_results = anti_alias_activation_cuda.forward(
-            inputs, ftr, alpha, beta
+            inputs, up_ftr, down_ftr, alpha, beta
         )
+        
         return activation_results
 
     @staticmethod
     def backward(ctx, output_grads):
-        # TODO: implement bwd pass
         raise NotImplementedError
         return output_grads, None, None
 
@@ -70,6 +70,6 @@ class Activation1d(nn.Module):
             ):  # Exp baked into cuda kernel, cancel it out with a log
                 alpha = torch.log(alpha)
                 beta = torch.log(beta)
-            x = FusedAntiAliasActivation.apply(x, self.upsample.filter, alpha, beta)
-            x = self.downsample(x)
+                
+            x = FusedAntiAliasActivation.apply(x, self.upsample.filter, self.downsample.lowpass.filter, alpha, beta)
             return x

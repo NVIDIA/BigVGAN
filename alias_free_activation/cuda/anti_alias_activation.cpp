@@ -14,36 +14,10 @@
  * limitations under the License.
  */
 
-#include <cuda_fp16.h>
-#include <torch/extension.h>
-#include <vector>
+ #include <torch/extension.h>
 
-namespace anti_alias_activation
-{
+extern "C" torch::Tensor fwd_cuda(torch::Tensor const &input, torch::Tensor const &up_filter, torch::Tensor const &down_filter, torch::Tensor const &alpha, torch::Tensor const &beta);
 
-  torch::Tensor fwd_cuda(torch::Tensor const &input,
-                         torch::Tensor const &filter,
-                         torch::Tensor const &alpha,
-                         torch::Tensor const &beta);
-
-  torch::Tensor fwd(torch::Tensor const &input,
-                    torch::Tensor const &filter,
-                    torch::Tensor const &alpha,
-                    torch::Tensor const &beta)
-  {
-    AT_ASSERTM(input.dim() == 3, "expected 3D tensor");
-    // AT_ASSERTM((input.scalar_type() == at::ScalarType::Half) ||
-    //	     (input.scalar_type() == at::ScalarType::BFloat16),
-    //     "Only fp16 and bf16 are supported");
-
-    return fwd_cuda(input, filter, alpha, beta);
-  }
-
-} // end namespace anti_alias_activation
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
-{
-  m.def("forward",
-        &anti_alias_activation::fwd,
-        "Anti Alias Activation -- Forward.");
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def("forward", &fwd_cuda, "Anti-Alias Activation forward (CUDA)");
 }

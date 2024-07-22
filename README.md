@@ -9,13 +9,16 @@
 <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800"></center>
 
 ## News
+- **Jul 2024 (v2.3):**
+  - General refactor and code improvements for improved readability
+  - Fully fused CUDA kernel of upsampling + activation + downsampling
+  - Inference speed benchmark
 
 - **Jul 2024 (v2.2):** The repository now includes an interactive local demo using gradio.
 
 - **Jul 2024 (v2.1):** BigVGAN is now integrated with 🤗 Hugging Face Hub with easy access to inference using pretrained checkpoints. We also provide an interactive demo on Hugging Face Spaces.
 
 - **Jul 2024 (v2):** We release BigVGAN-v2 along with pretrained checkpoints. Below are the highlights:
-
   - Custom CUDA kernel for inference: we provide a fused upsampling + activation kernel written in CUDA for accelerated inference speed. Our test shows 1.5 - 3x faster speed on a single A100 GPU.
   - Improved discriminator and loss: BigVGAN-v2 is trained using a [multi-scale sub-band CQT discriminator](https://arxiv.org/abs/2311.14957) and a [multi-scale mel spectrogram loss](https://arxiv.org/abs/2306.06546).
   - Larger training data: BigVGAN-v2 is trained using datasets containing diverse audio types, including speech in multiple languages, environmental sounds, and instruments.
@@ -182,7 +185,7 @@ We provide the [pretrained models on Hugging Face Collections](https://huggingfa
 One can download the checkpoints of the generator weight (named `bigvgan_generator.pt`) and its discriminator/optimizer states (named `bigvgan_discriminator_optimizer.pt`) within the listed model repositories.
 
 | Model Name                                                                                               | Sampling Rate | Mel band | fmax  | Upsampling Ratio | Params | Dataset                    | Steps | Fine-Tuned |
-| -------------------------------------------------------------------------------------------------------- | ------------- | -------- | ----- | ---------------- | ------ | -------------------------- | ----- | ---------- |
+|:--------------------------------------------------------------------------------------------------------:|:-------------:|:--------:|:-----:|:----------------:|:------:|:--------------------------:|:-----:|:----------:|
 | [bigvgan_v2_44khz_128band_512x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_512x)             | 44 kHz        | 128      | 22050 | 512              | 122M   | Large-scale Compilation    | 3M    | No         |
 | [bigvgan_v2_44khz_128band_256x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_256x)             | 44 kHz        | 128      | 22050 | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
 | [bigvgan_v2_24khz_100band_256x](https://huggingface.co/nvidia/bigvgan_v2_24khz_100band_256x)             | 24 kHz        | 100      | 12000 | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
@@ -215,10 +218,41 @@ When training BigVGAN-v2 from scratch with small batch size, it can potentially 
 Below are the objective results of the 24kHz model (`bigvgan_v2_24khz_100band_256x`) obtained from the LibriTTS `dev` sets. BigVGAN-v2 shows noticeable improvements of the metrics. The model also exhibits reduced perceptual artifacts, especially for non-speech audio.
 
 | Model      | Dataset                 | Steps | PESQ(↑)   | M-STFT(↓)  | MCD(↓) | Periodicity(↓) | V/UV F1(↑) |
-| ---------- | ----------------------- | ----- | --------- | ---------- | ------ | -------------- | ---------- |
+|:----------:|:-----------------------:|:-----:|:---------:|:----------:|:------:|:--------------:|:----------:|
 | BigVGAN    | LibriTTS                | 1M    | 4.027     | 0.7997     | 0.3745 | 0.1018         | 0.9598     |
 | BigVGAN    | LibriTTS                | 5M    | 4.256     | 0.7409     | 0.2988 | 0.0809         | 0.9698     |
 | BigVGAN-v2 | Large-scale Compilation | 3M    | **4.359** | **0.7134** | 0.3060 | **0.0621**     | **0.9777** |
+
+## Speed Benchmark
+
+Below are the speed and VRAM usage benchmark of BigVGAN from `tests/test_cuda_vs_torch_model.py`, using `bigvgan_v2_24khz_100band_256x` as a reference model.
+
+| GPU                        | num_mel_frame | use_cuda_kernel | Speed (kHz) | Real-time Factor | VRAM (GB) |
+|:--------------------------:|:-------------:|:---------------:|:-----------:|:----------------:|:---------:|
+| NVIDIA A100                | 256           | False           | 1672.1      | 69.7x            | 1.3       |
+|                            |               | True            | 3916.5      | 163.2x           | 1.3       |
+|                            | 2048          | False           | 1899.6      | 79.2x            | 1.7       |
+|                            |               | True            | 5330.1      | 222.1x           | 1.7       |
+|                            | 16384         | False           | 1973.8      | 82.2x            | 5.0       |
+|                            |               | True            | 5761.7      | 240.1x           | 4.4       |
+| NVIDIA GeForce RTX 3080    | 256           | False           | 841.1       | 35.0x            | 1.3       |
+|                            |               | True            | 1598.1      | 66.6x            | 1.3       |
+|                            | 2048          | False           | 929.9       | 38.7x            | 1.7       |
+|                            |               | True            | 1971.3      | 82.1x            | 1.6       |
+|                            | 16384         | False           | 943.4       | 39.3x            | 5.0       |
+|                            |               | True            | 2026.5      | 84.4x            | 3.9       |
+| NVIDIA GeForce RTX 2080 Ti | 256           | False           | 515.6       | 21.5x            | 1.3       |
+|                            |               | True            | 811.3       | 33.8x            | 1.3       |
+|                            | 2048          | False           | 576.5       | 24.0x            | 1.7       |
+|                            |               | True            | 1023.0      | 42.6x            | 1.5       |
+|                            | 16384         | False           | 589.4       | 24.6x            | 5.0       |
+|                            |               | True            | 1068.1      | 44.5x            | 3.2       |
+
+This format centers the `GPU` and `num_mel_frame` columns for better readability.
+
+This format centers the `GPU` and `num_mel_frame` columns for better readability.
+
+This table now uses `use_cuda_kernel=False` and `use_cuda_kernel=True` to indicate the models.
 
 ## Acknowledgements
 

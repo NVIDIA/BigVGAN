@@ -3,6 +3,9 @@ alias_free_activation/cuda/build/
 exp/
 tmp/
 
+# VSCode configs
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
