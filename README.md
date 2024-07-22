@@ -11,7 +11,7 @@
 ## News
 - **Jul 2024 (v2.3):**
   - General refactor and code improvements for improved readability
-  - Fully fused CUDA kernel of upsampling + activation + downsampling
+  - Fully fused CUDA kernel of anti-alised activation (upsampling + activation + downsampling)
   - Inference speed benchmark
 
 - **Jul 2024 (v2.2):** The repository now includes an interactive local demo using gradio.
