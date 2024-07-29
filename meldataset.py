@@ -247,7 +247,8 @@ class MelDataset(torch.utils.data.Dataset):
         filename = self.audio_files[index]
         if self._cache_ref_count == 0:
             audio, sampling_rate = load_wav(filename, self.sampling_rate)
-            audio = audio / MAX_WAV_VALUE
+            if np.abs(audio).max() > 1:
+                audio = audio / MAX_WAV_VALUE
             if not self.fine_tuning:
                 audio = normalize(audio) * 0.95
             self.cached_wav = audio
@@ -328,13 +329,13 @@ class MelDataset(torch.utils.data.Dataset):
                         * self.hop_size : (mel_start + frames_per_seg)
                         * self.hop_size,
                     ]
-                else:
-                    mel = torch.nn.functional.pad(
-                        mel, (0, frames_per_seg - mel.size(2)), "constant"
-                    )
-                    audio = torch.nn.functional.pad(
-                        audio, (0, self.segment_size - audio.size(1)), "constant"
-                    )
+
+                mel = torch.nn.functional.pad(
+                    mel, (0, frames_per_seg - mel.size(2)), "constant"
+                )
+                audio = torch.nn.functional.pad(
+                    audio, (0, self.segment_size - audio.size(1)), "constant"
+                )
 
         mel_loss = mel_spectrogram(
             audio,
