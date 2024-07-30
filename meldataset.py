@@ -282,9 +282,6 @@ class MelDataset(torch.utils.data.Dataset):
                             # trim last elements to match self.segment_size (e.g., 16385 for 44khz downsampled to 24khz -> 16384)
                             audio = audio[: self.segment_size]
 
-                    # BigVGAN is trained using volume-normalized waveform
-                    audio = librosa.util.normalize(audio) * 0.95
-
                 else:  # Validation step
                     # Resample full audio clip to target sampling rate
                     if source_sampling_rate != self.sampling_rate:
@@ -296,7 +293,10 @@ class MelDataset(torch.utils.data.Dataset):
                     # Trim last elements to match audio length to self.hop_size * n for evaluation
                     if (audio.shape[0] % self.hop_size) != 0:
                         audio = audio[: -(audio.shape[0] % self.hop_size)]
-
+                        
+                # BigVGAN is trained using volume-normalized waveform
+                audio = librosa.util.normalize(audio) * 0.95
+                
                 # Cast ndarray to torch tensor
                 audio = torch.FloatTensor(audio)
                 audio = audio.unsqueeze(0)  # [B(1), self.segment_size]
