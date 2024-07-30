@@ -184,7 +184,6 @@ def train(rank, a, h):
         h.sampling_rate,
         h.fmin,
         h.fmax,
-        n_cache_reuse=0,
         shuffle=False if h.num_gpus > 1 else True,
         fmax_loss=h.fmax_for_loss,
         device=device,
@@ -219,7 +218,6 @@ def train(rank, a, h):
             h.fmax,
             False,
             False,
-            n_cache_reuse=0,
             fmax_loss=h.fmax_for_loss,
             device=device,
             fine_tuning=a.fine_tuning,
@@ -252,7 +250,6 @@ def train(rank, a, h):
                 h.fmax,
                 False,
                 False,
-                n_cache_reuse=0,
                 fmax_loss=h.fmax_for_loss,
                 device=device,
                 fine_tuning=a.fine_tuning,
@@ -308,7 +305,7 @@ def train(rank, a, h):
             print(f"step {steps} {mode} speaker validation...")
 
             # Loop over validation set and compute metrics
-            for j, batch in tqdm(enumerate(loader)):
+            for j, batch in enumerate(tqdm(loader)):
                 x, y, _, y_mel = batch
                 y = y.to(device)
                 if hasattr(generator, "module"):
@@ -326,7 +323,8 @@ def train(rank, a, h):
                     h.fmin,
                     h.fmax_for_loss,
                 )
-                val_err_tot += F.l1_loss(y_mel, y_g_hat_mel).item()
+                min_t = min(y_mel.size(-1), y_g_hat_mel.size(-1))
+                val_err_tot += F.l1_loss(y_mel[...,:min_t], y_g_hat_mel[...,:min_t]).item()
 
                 # PESQ calculation. only evaluate PESQ if it's speech signal (nonspeech PESQ will error out)
                 if (
@@ -343,7 +341,8 @@ def train(rank, a, h):
                     val_pesq_tot += pesq(16000, y_int_16k, y_g_hat_int_16k, "wb")
 
                 # MRSTFT calculation
-                val_mrstft_tot += loss_mrstft(y_g_hat, y).item()
+                min_t = min(y.size(-1), y_g_hat.size(-1))
+                val_mrstft_tot += loss_mrstft(y_g_hat[...,:min_t], y[...,:min_t]).item()
 
                 # Log audio and figures to Tensorboard
                 if j % a.eval_subsample == 0:  # Subsample every nth from validation set
