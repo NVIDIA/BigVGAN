@@ -234,6 +234,7 @@ class AMPBlock2(torch.nn.Module):
             xt = a(x)
             xt = c(xt)
             x = xt + x
+        return x
 
     def remove_weight_norm(self):
         for l in self.convs:
