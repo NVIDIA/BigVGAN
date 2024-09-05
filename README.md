@@ -9,6 +9,9 @@
 <center><img src="https://user-images.githubusercontent.com/15963413/218609148-881e39df-33af-4af9-ab95-1427c4ebf062.png" width="800"></center>
 
 ## News
+- **Sep 2024 (v2.4):**
+  - We have updated the pretrained checkpoints trained for 5M steps. This is final release of the BigVGAN-v2 checkpoints.
+
 - **Jul 2024 (v2.3):**
   - General refactor and code improvements for improved readability.
   - Fully fused CUDA kernel of anti-alised activation (upsampling + activation + downsampling) with inference speed benchmark.
@@ -185,11 +188,11 @@ One can download the checkpoints of the generator weight (named `bigvgan_generat
 
 | Model Name                                                                                               | Sampling Rate | Mel band | fmax  | Upsampling Ratio | Params | Dataset                    | Steps | Fine-Tuned |
 |:--------------------------------------------------------------------------------------------------------:|:-------------:|:--------:|:-----:|:----------------:|:------:|:--------------------------:|:-----:|:----------:|
-| [bigvgan_v2_44khz_128band_512x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_512x)             | 44 kHz        | 128      | 22050 | 512              | 122M   | Large-scale Compilation    | 3M    | No         |
-| [bigvgan_v2_44khz_128band_256x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_256x)             | 44 kHz        | 128      | 22050 | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
-| [bigvgan_v2_24khz_100band_256x](https://huggingface.co/nvidia/bigvgan_v2_24khz_100band_256x)             | 24 kHz        | 100      | 12000 | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
-| [bigvgan_v2_22khz_80band_256x](https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_256x)               | 22 kHz        | 80       | 11025 | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
-| [bigvgan_v2_22khz_80band_fmax8k_256x](https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_fmax8k_256x) | 22 kHz        | 80       | 8000  | 256              | 112M   | Large-scale Compilation    | 3M    | No         |
+| [bigvgan_v2_44khz_128band_512x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_512x)             | 44 kHz        | 128      | 22050 | 512              | 122M   | Large-scale Compilation    | 5M    | No         |
+| [bigvgan_v2_44khz_128band_256x](https://huggingface.co/nvidia/bigvgan_v2_44khz_128band_256x)             | 44 kHz        | 128      | 22050 | 256              | 112M   | Large-scale Compilation    | 5M    | No         |
+| [bigvgan_v2_24khz_100band_256x](https://huggingface.co/nvidia/bigvgan_v2_24khz_100band_256x)             | 24 kHz        | 100      | 12000 | 256              | 112M   | Large-scale Compilation    | 5M    | No         |
+| [bigvgan_v2_22khz_80band_256x](https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_256x)               | 22 kHz        | 80       | 11025 | 256              | 112M   | Large-scale Compilation    | 5M    | No         |
+| [bigvgan_v2_22khz_80band_fmax8k_256x](https://huggingface.co/nvidia/bigvgan_v2_22khz_80band_fmax8k_256x) | 22 kHz        | 80       | 8000  | 256              | 112M   | Large-scale Compilation    | 5M    | No         |
 | [bigvgan_24khz_100band](https://huggingface.co/nvidia/bigvgan_24khz_100band)                             | 24 kHz        | 100      | 12000 | 256              | 112M   | LibriTTS                   | 5M    | No         |
 | [bigvgan_base_24khz_100band](https://huggingface.co/nvidia/bigvgan_base_24khz_100band)                   | 24 kHz        | 100      | 12000 | 256              | 14M    | LibriTTS                   | 5M    | No         |
 | [bigvgan_22khz_80band](https://huggingface.co/nvidia/bigvgan_22khz_80band)                               | 22 kHz        | 80       | 8000  | 256              | 112M   | LibriTTS + VCTK + LJSpeech | 5M    | No         |
@@ -216,11 +219,12 @@ When training BigVGAN-v2 from scratch with small batch size, it can potentially 
 
 Below are the objective results of the 24kHz model (`bigvgan_v2_24khz_100band_256x`) obtained from the LibriTTS `dev` sets. BigVGAN-v2 shows noticeable improvements of the metrics. The model also exhibits reduced perceptual artifacts, especially for non-speech audio.
 
-| Model      | Dataset                 | Steps | PESQ(↑)   | M-STFT(↓)  | MCD(↓) | Periodicity(↓) | V/UV F1(↑) |
-|:----------:|:-----------------------:|:-----:|:---------:|:----------:|:------:|:--------------:|:----------:|
-| BigVGAN    | LibriTTS                | 1M    | 4.027     | 0.7997     | 0.3745 | 0.1018         | 0.9598     |
-| BigVGAN    | LibriTTS                | 5M    | 4.256     | 0.7409     | 0.2988 | 0.0809         | 0.9698     |
-| BigVGAN-v2 | Large-scale Compilation | 3M    | **4.359** | **0.7134** | 0.3060 | **0.0621**     | **0.9777** |
+| Model      | Dataset                 | Steps | PESQ(↑)   | M-STFT(↓)  | MCD(↓)     | Periodicity(↓) | V/UV F1(↑) |
+|:----------:|:-----------------------:|:-----:|:---------:|:----------:|:----------:|:--------------:|:----------:|
+| BigVGAN    | LibriTTS                | 1M    | 4.027     | 0.7997     | 0.3745     | 0.1018         | 0.9598     |
+| BigVGAN    | LibriTTS                | 5M    | 4.256     | 0.7409     | 0.2988     | 0.0809         | 0.9698     |
+| BigVGAN-v2 | Large-scale Compilation | 3M    | 4.359     | 0.7134     | 0.3060     | 0.0621         | 0.9777     |
+| BigVGAN-v2 | Large-scale Compilation | 5M    | **4.362** | **0.7026** | **0.2903** | **0.0593**     | **0.9793** |
 
 ## Speed Benchmark
 

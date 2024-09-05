@@ -3,6 +3,15 @@ alias_free_activation/cuda/build/
 exp/
 tmp/
 
+# Symlinks for bundled LibriTTS filelists
+filelists/LibriTTS/train-clean-100
+filelists/LibriTTS/train-clean-360
+filelists/LibriTTS/train-other-500
+filelists/LibriTTS/dev-clean
+filelists/LibriTTS/dev-other
+filelists/LibriTTS/test-clean
+filelists/LibriTTS/test-other
+
 # VSCode configs
 .vscode/
 
