@@ -14,6 +14,8 @@ from activations import Snake
 
 def test_load_fused_kernels():
     try:
+        from alias_free_activation.cuda import load
+        load.load()
         print("[Success] load_fused_kernels")
     except ImportError as e:
         print("[Fail] load_fused_kernels")
@@ -54,6 +56,9 @@ def test_anti_alias_activation():
             f"\n > mean_difference={diff}, "
             f"\n > fused_values={fused_activation_output[-1][-1][:].tolist()}, "
             f"\n > torch_values={torch_activation_output[-1][-1][:].tolist()}"
+        )
+        raise AssertionError(
+            f"test_fused_anti_alias_activation failed: mean_difference={diff}"
         )
 
 
