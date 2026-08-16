@@ -57,7 +57,8 @@ def kaiser_sinc_filter1d(
         Normalize filter to have sum = 1, otherwise we will have a small leakage of the constant component in the input signal.
         """
         filter_ /= filter_.sum()
-        filter = filter_.view(1, 1, kernel_size)
+
+    filter = filter_.view(1, 1, kernel_size)
 
     return filter
 
