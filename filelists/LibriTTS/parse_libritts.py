@@ -8,7 +8,9 @@ def get_wav_and_text_filelist(data_root, data_type, subsample=1):
     wav_list = sorted(
         [
             path.replace(data_root, "")[1:]
-            for path in glob.glob(os.path.join(data_root, data_type, "**/**/*.wav"))
+            for path in glob.glob(
+                os.path.join(data_root, data_type, "**/**/*.wav"), recursive=True
+            )
         ]
     )
     wav_list = wav_list[::subsample]
