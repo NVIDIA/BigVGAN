@@ -26,7 +26,11 @@ def inference(a, h):
     state_dict_g = load_checkpoint(a.checkpoint_file, device)
     generator.load_state_dict(state_dict_g["generator"])
 
-    filelist = os.listdir(a.input_wavs_dir)
+    filelist = [
+        f
+        for f in os.listdir(a.input_wavs_dir)
+        if f.lower().endswith((".wav", ".flac", ".mp3"))
+    ]
 
     os.makedirs(a.output_dir, exist_ok=True)
 
@@ -46,6 +50,7 @@ def inference(a, h):
 
             audio = y_g_hat.squeeze()
             audio = audio * MAX_WAV_VALUE
+            audio = audio.clamp(min=-MAX_WAV_VALUE, max=MAX_WAV_VALUE - 1)
             audio = audio.cpu().numpy().astype("int16")
 
             output_file = os.path.join(
