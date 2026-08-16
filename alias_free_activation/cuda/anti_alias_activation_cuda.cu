@@ -57,7 +57,7 @@ namespace
         input_t down_filter[FILTER_SIZE];
 
         // Load data from global memory including extra indices reserved for replication paddings
-        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE + 2 * UPSAMPLE_REPLICATION_PAD] = {0};
+        input_t elements[2 * FILTER_SIZE + 2 * BUFFER_SIZE + 2 * UPSAMPLE_REPLICATION_PAD + 1] = {0};
         input_t intermediates[2 * FILTER_SIZE + 2 * BUFFER_SIZE + DOWNSAMPLE_REPLICATION_PAD_LEFT + DOWNSAMPLE_REPLICATION_PAD_RIGHT] = {0};
 
         // Output stores downsampled output before writing to dst
