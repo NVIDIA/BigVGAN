@@ -22,7 +22,7 @@ class DiscriminatorP(torch.nn.Module):
     def __init__(
         self,
         h: AttrDict,
-        period: List[int],
+        period: int,
         kernel_size: int = 5,
         stride: int = 3,
         use_spectral_norm: bool = False,
@@ -530,6 +530,7 @@ class DiscriminatorCQT(nn.Module):
             # Peak normalize the volume of input audio
             x = 0.8 * x / (x.abs().max(dim=-1, keepdim=True)[0] + 1e-9)
 
+        x = x.squeeze(1)
         x = self.resample(x)
 
         z = self.cqt_transform(x)
@@ -561,6 +562,8 @@ class DiscriminatorCQT(nn.Module):
             fmap.append(latent_z)
 
         latent_z = self.conv_post(latent_z)
+        fmap.append(latent_z)
+        latent_z = torch.flatten(latent_z, 1, -1)
 
         return latent_z, fmap
 
