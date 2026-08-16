@@ -708,18 +708,16 @@ def main():
         help="freeze D for the first specified steps. G only uses regression loss for these steps.",
     )
 
-    parser.add_argument("--fine_tuning", default=False, type=bool)
+    parser.add_argument("--fine_tuning", action="store_true")
 
     parser.add_argument(
         "--debug",
-        default=False,
-        type=bool,
+        action="store_true",
         help="debug mode. skips validation loop throughout training",
     )
     parser.add_argument(
         "--evaluate",
-        default=False,
-        type=bool,
+        action="store_true",
         help="only run evaluation from checkpoint and exit",
     )
     parser.add_argument(
@@ -730,14 +728,12 @@ def main():
     )
     parser.add_argument(
         "--skip_seen",
-        default=False,
-        type=bool,
+        action="store_true",
         help="skip seen dataset. useful for test set inference",
     )
     parser.add_argument(
         "--save_audio",
-        default=False,
-        type=bool,
+        action="store_true",
         help="save audio of test set inference to disk",
     )
 
