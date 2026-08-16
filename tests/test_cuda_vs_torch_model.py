@@ -148,6 +148,7 @@ if __name__ == "__main__":
         toc_total_original += toc   
 
         vram_used_original_total += torch.cuda.max_memory_allocated(device="cuda")
+        audio_length_total += audio_original.shape[-1]
         
         del data, audio_original
         torch.cuda.empty_cache()
