@@ -205,9 +205,9 @@ class MultiScaleMelSpectrogramLoss(nn.Module):
             ) / torch.log(torch.tensor(10.0))
 
             loss += self.log_weight * self.loss_fn(x_logmels, y_logmels)
-            loss += self.mag_weight * self.loss_fn(x_logmels, y_logmels)
+            loss += self.mag_weight * self.loss_fn(x_mels, y_mels)
 
-        return loss
+        return loss * self.weight
 
 
 # Loss functions
