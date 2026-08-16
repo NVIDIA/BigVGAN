@@ -281,6 +281,12 @@ class MelDataset(torch.utils.data.Dataset):
                         if audio.shape[0] > self.segment_size:
                             # trim last elements to match self.segment_size (e.g., 16385 for 44khz downsampled to 24khz -> 16384)
                             audio = audio[: self.segment_size]
+                        elif audio.shape[0] < self.segment_size:
+                            audio = np.pad(
+                                audio,
+                                (0, self.segment_size - audio.shape[0]),
+                                mode="constant",
+                            )
 
                 else:  # Validation step
                     # Resample full audio clip to target sampling rate
@@ -342,7 +348,7 @@ class MelDataset(torch.utils.data.Dataset):
                     frames_per_seg = math.ceil(self.segment_size / self.hop_size)
 
                     if audio.size(1) >= self.segment_size:
-                        mel_start = random.randint(0, mel.size(2) - frames_per_seg - 1)
+                        mel_start = random.randint(0, mel.size(2) - frames_per_seg)
                         mel = mel[:, :, mel_start : mel_start + frames_per_seg]
                         audio = audio[
                             :,
