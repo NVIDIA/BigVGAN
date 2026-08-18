@@ -94,6 +94,8 @@ def scan_checkpoint(cp_dir, prefix, renamed_file=None):
 
 def save_audio(audio, path, sr):
     # wav: torch with 1d shape
+    if audio.dim() != 1:
+        raise ValueError(f"save_audio expects 1D audio, got shape {audio.shape}")
     audio = audio * MAX_WAV_VALUE
     audio = audio.cpu().numpy().astype("int16")
     write(path, sr, audio)
